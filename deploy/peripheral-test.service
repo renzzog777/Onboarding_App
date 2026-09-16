@@ -1,0 +1,19 @@
+[Unit]
+Description=Gunicorn instance for the Peripheral Test Webapp
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/peripheral_test_app
+Environment="PATH=/opt/peripheral_test_app/venv/bin"
+# Change this to a real password before starting the service - it gates
+# the /admin tutorial-upload pages. Without it, app.py falls back to the
+# insecure default "changeme" and prints a warning in the logs.
+Environment="ADMIN_PASSWORD=change-this-to-a-real-password"
+ExecStart=/opt/peripheral_test_app/venv/bin/gunicorn --workers 3 --timeout 300 --bind 127.0.0.1:8000 app:app
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

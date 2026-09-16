@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Headset Test{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="session-info">{{ test_session['full_name'] }} &middot; CIM {{ test_session['cim_number'] }}</div>
+    <div class="progress-steps">
+        <span class="done">1. Mouse</span>
+        <span class="done">2. Keyboard</span>
+        <span class="active">3. Headset</span>
+        <span>4. Webcam</span>
+    </div>
+
+    <h1>Headset test</h1>
+
+    <h2>1. Speaker / output test</h2>
+    <p class="muted">Play a tone in each ear and confirm you heard it.</p>
+    <button type="button" class="secondary" id="playLeft">Play tone - Left ear</button>
+    <button type="button" class="secondary" id="playRight">Play tone - Right ear</button>
+    <div class="checkbox-row">
+        <input type="checkbox" id="leftConfirm">
+        <label for="leftConfirm">I heard the tone in my left ear</label>
+    </div>
+    <div class="checkbox-row">
+        <input type="checkbox" id="rightConfirm">
+        <label for="rightConfirm">I heard the tone in my right ear</label>
+    </div>
+
+    <h2>2. Microphone test</h2>
+    <p class="muted">Click start, then speak normally. The bar should move as you talk.</p>
+    <button type="button" class="secondary" id="startMic">Start Microphone Test</button>
+    <div class="meter-bar-outer"><div class="meter-bar-inner" id="meterBar"></div></div>
+    <div class="checkbox-row">
+        <input type="checkbox" id="micConfirm">
+        <label for="micConfirm">I saw the meter react to my voice</label>
+    </div>
+
+    <h2>3. Voice recording</h2>
+    <p class="muted">Record yourself counting from 1 to 10 out loud - this recording is saved and tagged with your name and CIM for IT to review if there's any doubt about mic quality.</p>
+    <button type="button" class="secondary" id="startRecording">Start Recording</button>
+    <button type="button" class="secondary" id="stopRecording" disabled>Stop Recording</button>
+    <p id="recordingStatus" class="muted"></p>
+    <audio id="recordingPlayback" controls style="display:none; width:100%; margin-top:8px;"></audio>
+
+    <p id="deviceInfo" class="muted"></p>
+    <p id="recordingError" class="error" style="display:none;">Please record yourself counting from 1 to 10 before continuing.</p>
+
+    <button id="continueBtn">Continue to Webcam Test</button>
+</div>
+<script>
+    window.SESSION_ID = {{ test_session['id'] }};
+    window.NEXT_TEST = "webcam";
+</script>
+<script src="{{ url_for('static', filename='js/headset_test.js') }}"></script>
+{% endblock %}

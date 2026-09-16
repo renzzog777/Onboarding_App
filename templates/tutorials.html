@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Tutorials{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>Tutorials</h1>
+    <p class="muted">macOS setup guides and video walkthroughs.</p>
+
+    <h2>PDF guides</h2>
+    {% if pdfs %}
+        <div class="resource-grid">
+        {% for r in pdfs %}
+            <a class="resource-tile" href="{{ url_for('download_tutorial', resource_id=r['id']) }}">
+                {% if r['thumbnail'] %}
+                    <img class="resource-thumb" src="{{ url_for('resource_thumbnail', resource_id=r['id']) }}" alt="">
+                {% else %}
+                    <span class="resource-thumb resource-thumb-fallback">PDF</span>
+                {% endif %}
+                <span class="resource-tile-title">{{ r['title'] }}</span>
+            </a>
+        {% endfor %}
+        </div>
+    {% else %}
+        <p class="muted">No PDF guides uploaded yet.</p>
+    {% endif %}
+
+    <h2>Video tutorials</h2>
+    {% if videos %}
+        <div class="resource-grid">
+        {% for r in videos %}
+            <a class="resource-tile" href="{{ url_for('download_tutorial', resource_id=r['id']) }}">
+                {% if r['thumbnail'] %}
+                    <img class="resource-thumb" src="{{ url_for('resource_thumbnail', resource_id=r['id']) }}" alt="">
+                {% else %}
+                    <span class="resource-thumb resource-thumb-fallback">VIDEO</span>
+                {% endif %}
+                <span class="resource-tile-title">{{ r['title'] }}</span>
+            </a>
+        {% endfor %}
+        </div>
+    {% else %}
+        <p class="muted">No video tutorials uploaded yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

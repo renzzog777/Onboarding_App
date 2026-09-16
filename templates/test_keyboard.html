@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Keyboard Test{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="session-info">{{ test_session['full_name'] }} &middot; CIM {{ test_session['cim_number'] }}</div>
+    <div class="progress-steps">
+        <span class="done">1. Mouse</span>
+        <span class="active">2. Keyboard</span>
+        <span>3. Headset</span>
+        <span>4. Webcam</span>
+    </div>
+
+    <h1>Keyboard test</h1>
+    <p class="muted">Press keys across the keyboard. Each key you press will light up below. You don't need to test every single key (e.g. media keys) - test what's relevant, then continue.</p>
+
+    <div class="demo-note" style="background:#2a2410;border:1px solid #5c4d1e;color:#e8cf8a;border-radius:8px;padding:10px 14px;font-size:.85rem;margin:14px 0;">
+        <b>If F1&ndash;F12 don't light up:</b> on most Macs these keys default to system shortcuts (brightness, volume, Mission Control) instead of sending a plain function-key press. Hold <b>Fn</b> while pressing them, or ask the advisor to check System Settings &rarr; Keyboard &rarr; "Use F1, F2, etc. keys as standard function keys". This is a macOS setting, not a bug in this page - the key press never reaches the browser at all until that's addressed.
+    </div>
+
+    <div class="keyboard-layout" id="keyboardLayout"></div>
+
+    <p class="muted" id="progressText">0% of layout tested (0 keys)</p>
+
+    <button id="continueBtn">Continue to Headset Test</button>
+</div>
+<script>
+    window.SESSION_ID = {{ test_session['id'] }};
+    window.NEXT_TEST = "headset";
+</script>
+<script src="{{ url_for('static', filename='js/keyboard_test.js') }}"></script>
+{% endblock %}

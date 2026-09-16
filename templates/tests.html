@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Peripheral Tests{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>Start a peripheral test</h1>
+    <p class="muted">Enter the employee's details to begin testing the mouse, keyboard, headset and webcam on this Mac.</p>
+    <form method="POST" action="{{ url_for('start') }}">
+        <label for="full_name">Employee full name</label>
+        <input type="text" id="full_name" name="full_name" required autocomplete="off">
+
+        <label for="cim_number">CIM number</label>
+        <input type="text" id="cim_number" name="cim_number" required autocomplete="off">
+
+        <label for="network_type">Network connection on this Mac</label>
+        <select id="network_type" name="network_type" required>
+            <option value="" disabled selected>-- Select --</option>
+            <option value="Wi-Fi">Wi-Fi</option>
+            <option value="Ethernet">Ethernet</option>
+        </select>
+        <p class="muted" style="font-size:0.82rem;">Not sure? Check <b>System Settings &rarr; Network &rarr; Ethernet</b> - if it shows "Connected" with a green dot, select Ethernet; otherwise select Wi-Fi.</p>
+
+        {% if error %}<p class="error">{{ error }}</p>{% endif %}
+
+        <button type="submit">Start Test</button>
+    </form>
+</div>
+{% endblock %}

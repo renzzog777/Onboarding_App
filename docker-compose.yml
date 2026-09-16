@@ -1,0 +1,39 @@
+# Production stack for the Hostinger VPS.
+#
+# Two containers: the app itself (pulled from GHCR, built by CI - see
+# .github/workflows/docker-publish.yml) and Caddy as a reverse proxy,
+# which gets and renews a real Let's Encrypt certificate automatically
+# just from the domain name in the Caddyfile - no certbot, no manual
+# cert renewal cron job, unlike the old bare-metal Nginx setup.
+#
+# IMPORTANT: edit the image line below to match your GitHub username/repo
+# (lowercase - see the CI/CD explanation for why) before first deploy.
+
+services:
+  app:
+    image: ghcr.io/renzzog777/new-hires-app:latest
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+      - ./reports:/app/reports
+      - ./uploads:/app/uploads
+    expose:
+      - "8000"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  caddy_data:
+  caddy_config:

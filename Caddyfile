@@ -1,0 +1,14 @@
+# Replace with your real domain, pointed at the VPS's IP via DNS first.
+# Caddy handles the entire HTTPS certificate lifecycle automatically -
+# issuance and renewal - the moment it can see this domain resolve to
+# this server on port 80/443.
+
+yourdomain.com {
+    reverse_proxy app:8000
+
+    # Video tutorial uploads can be large - match the limit set in
+    # app.py's MAX_CONTENT_LENGTH.
+    request_body {
+        max_size 2048MB
+    }
+}

@@ -1,0 +1,17 @@
+venv/
+__pycache__/
+*.pyc
+.env
+data/*.db
+data/.flask_secret
+reports/*.pdf
+reports/snapshots/*.jpg
+!reports/snapshots/.gitkeep
+!reports/recordings/
+reports/recordings/*
+!reports/recordings/.gitkeep
+uploads/tutorials/*
+!uploads/tutorials/.gitkeep
+!uploads/tutorials/thumbnails/
+uploads/tutorials/thumbnails/*
+!uploads/tutorials/thumbnails/.gitkeep

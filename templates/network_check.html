@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Network Check{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="session-info">{{ test_session['full_name'] }} &middot; CIM {{ test_session['cim_number'] }}</div>
+
+    <h1>Network connection check</h1>
+    <p class="muted">Open Terminal on this Mac and paste the command below. It reads which network interface this Mac is currently using and reports it back automatically - nothing to type in, just copy, paste, and press Enter.</p>
+
+    <div class="code-block" id="commandBlock">curl -s -X POST {{ api_url }} \
+  --data-urlencode "route_interface=$(route -n get default | awk '/interface:/{print $2}')" \
+  --data-urlencode "hardware_ports=$(networksetup -listallhardwareports)"</div>
+    <button type="button" class="secondary" id="copyBtn">Copy Command</button>
+
+    <div class="waiting-indicator" id="waitingIndicator">
+        <span class="spinner"></span>
+        <span>Waiting for the command to run...</span>
+    </div>
+    <p id="detectedMsg" class="muted" style="display:none;"></p>
+
+    <h2 style="margin-top:28px;">Can't use Terminal?</h2>
+    <p class="muted">If Terminal is restricted on this Mac, select the connection manually instead.</p>
+    <select id="manualSelect">
+        <option value="" disabled selected>-- Select --</option>
+        <option value="Wi-Fi">Wi-Fi</option>
+        <option value="Ethernet">Ethernet</option>
+    </select>
+    <button type="button" class="secondary" id="manualBtn">Continue with manual selection</button>
+    <p id="manualError" class="error" style="display:none;">Please select Wi-Fi or Ethernet.</p>
+</div>
+<script>
+    window.SESSION_ID = {{ test_session['id'] }};
+</script>
+<script src="{{ url_for('static', filename='js/network_check.js') }}"></script>
+{% endblock %}
