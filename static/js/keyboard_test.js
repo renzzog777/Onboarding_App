@@ -1,7 +1,7 @@
 (function () {
     // A simplified ANSI keyboard layout using KeyboardEvent.code values.
     const LAYOUT = [
-        [["Escape","Esc"],["F1","F1"],["F2","F2"],["F3","F3"],["F4","F4"],["F5","F5"],["F6","F6"],["F7","F7"],["F8","F8"],["F9","F9"],["F10","F10"],["F11","F11"],["F12","F12"]],
+        [["Escape","Esc"]],
         [["Backquote","`"],["Digit1","1"],["Digit2","2"],["Digit3","3"],["Digit4","4"],["Digit5","5"],["Digit6","6"],["Digit7","7"],["Digit8","8"],["Digit9","9"],["Digit0","0"],["Minus","-"],["Equal","="],["Backspace","Bksp","wide-2"]],
         [["Tab","Tab","wide-1"],["KeyQ","Q"],["KeyW","W"],["KeyE","E"],["KeyR","R"],["KeyT","T"],["KeyY","Y"],["KeyU","U"],["KeyI","I"],["KeyO","O"],["KeyP","P"],["BracketLeft","["],["BracketRight","]"],["Backslash","\\"]],
         [["CapsLock","Caps","wide-1"],["KeyA","A"],["KeyS","S"],["KeyD","D"],["KeyF","F"],["KeyG","G"],["KeyH","H"],["KeyJ","J"],["KeyK","K"],["KeyL","L"],["Semicolon",";"],["Quote","'"],["Enter","Enter","wide-2"]],
@@ -47,6 +47,12 @@
     window.addEventListener("keydown", (e) => {
         const el = keyElements[e.code];
         if (el) {
+            // Prevent the browser's own default behavior for any key we're
+            // tracking - most importantly Enter, which would otherwise
+            // "click" the Continue button if it happens to have focus,
+            // and Space/Tab, which would scroll the page or shift focus.
+            // There's no text input on this page, so this is always safe.
+            e.preventDefault();
             el.classList.add("pressed");
             pressed.add(e.code);
             updateProgress();
