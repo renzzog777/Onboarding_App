@@ -45,13 +45,20 @@
     }
 
     window.addEventListener("keydown", (e) => {
+        // Skip entirely while typing in the explanation textarea (or any
+        // future form field on this page) - otherwise every letter typed
+        // there gets treated as a keyboard-test keypress and blocked from
+        // actually appearing in the field. This comment is now outdated
+        // where it used to say "no text input on this page".
+        const tag = e.target.tagName;
+        if (tag === "TEXTAREA" || tag === "INPUT") return;
+
         const el = keyElements[e.code];
         if (el) {
             // Prevent the browser's own default behavior for any key we're
             // tracking - most importantly Enter, which would otherwise
             // "click" the Continue button if it happens to have focus,
             // and Space/Tab, which would scroll the page or shift focus.
-            // There's no text input on this page, so this is always safe.
             e.preventDefault();
             el.classList.add("pressed");
             pressed.add(e.code);
