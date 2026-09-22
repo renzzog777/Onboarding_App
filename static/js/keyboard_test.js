@@ -60,6 +60,15 @@
     });
 
     continueBtn.addEventListener("click", async () => {
+        const percentTested = Math.round((pressed.size / totalKeys) * 100);
+        const incompleteReason = document.getElementById("incompleteReasonInput").value.trim();
+        const incompleteError = document.getElementById("keyboardIncompleteError");
+        if (percentTested < 100 && !incompleteReason) {
+            incompleteError.style.display = "block";
+            return;
+        }
+        incompleteError.style.display = "none";
+
         continueBtn.disabled = true;
         continueBtn.textContent = "Saving...";
         try {
@@ -68,8 +77,9 @@
                 .map(([, label]) => label);
             const payload = {
                 keys_pressed: Array.from(pressed),
-                percent_tested: Math.round((pressed.size / totalKeys) * 100),
+                percent_tested: percentTested,
                 missing_keys: missingKeys,
+                incomplete_reason: percentTested < 100 ? incompleteReason : null,
             };
             const result = await saveTestResult("keyboard", window.SESSION_ID, payload);
             window.location.href = result.next_url;

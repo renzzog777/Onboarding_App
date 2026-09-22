@@ -69,10 +69,11 @@ def evaluate_keyboard(result):
     preview = ", ".join(str(k) for k in missing[:15])
     if len(missing) > 15:
         preview += f", and {len(missing) - 15} more"
-    return (
-        "PARTIAL",
-        f"Not all keys were tested ({percent}% covered). Untested keys: {preview}.",
-    )
+    note = f"Not all keys were tested ({percent}% covered). Untested keys: {preview}."
+    reason = (result.get("incomplete_reason") or "").strip()
+    if reason:
+        note += f" Advisor's explanation: {reason}"
+    return ("PARTIAL", note)
 
 
 def evaluate_headset(result):
@@ -235,6 +236,8 @@ def generate(
             ["Percent of layout tested", f"{keyboard.get('percent_tested', 0)}%"],
             ["Keys not tested", str(len(missing)) if missing else "None"],
         ]
+        if keyboard.get("incomplete_reason"):
+            rows.append(["Reason not all keys were tested", keyboard.get("incomplete_reason")])
         story.append(Spacer(1, 6))
         story.append(_section_table(rows))
     story.append(Spacer(1, 16))

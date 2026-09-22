@@ -213,6 +213,15 @@ def save_test(test_type, session_id):
     session = _require_session(session_id)
     data = request.get_json(force=True, silent=True) or {}
 
+    if test_type == "keyboard":
+        percent_tested = data.get("percent_tested", 0)
+        incomplete_reason = (data.get("incomplete_reason") or "").strip()
+        if percent_tested < 100 and not incomplete_reason:
+            abort(
+                400,
+                description="An explanation is required when not all keys were tested.",
+            )
+
     if test_type == "webcam":
         has_snapshot = bool(data.get("snapshot"))
         has_reason = bool((data.get("capture_skipped_reason") or "").strip())

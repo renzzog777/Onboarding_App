@@ -11,11 +11,16 @@
     </div>
 
     <h1>Keyboard test</h1>
-    <p class="muted">Press keys across the keyboard. Each key you press will light up below. You don't need to test every single key (e.g. media keys) - test what's relevant, then continue.</p>
+    <p class="muted">Press keys across the keyboard. Each key you press will light up below. If you can't test every key (e.g. one seems dead, or the system isn't recognizing it), that's fine - you'll just need to explain what happened before continuing.</p>
 
     <div class="keyboard-layout" id="keyboardLayout"></div>
 
     <p class="muted" id="progressText">0% of layout tested (0 keys)</p>
+
+    <label for="incompleteReasonInput">If not all keys were tested, explain why (leave blank if 100% tested)</label>
+    <textarea id="incompleteReasonInput" rows="3" placeholder="e.g. The 'M' key does not respond at all, keyboard may need replacement."></textarea>
+
+    <p id="keyboardIncompleteError" class="error" style="display:none;">Please explain why not all keys were tested before continuing.</p>
 
     <button id="continueBtn">Continue to Headset Test</button>
 </div>
