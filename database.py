@@ -188,6 +188,13 @@ def get_resource(resource_id):
     return row
 
 
+def set_resource_thumbnail(resource_id, thumbnail):
+    conn = get_conn()
+    conn.execute("UPDATE resources SET thumbnail = ? WHERE id = ?", (thumbnail, resource_id))
+    conn.commit()
+    conn.close()
+
+
 def delete_resource(resource_id):
     conn = get_conn()
     conn.execute("DELETE FROM resources WHERE id = ?", (resource_id,))

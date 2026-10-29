@@ -477,19 +477,21 @@ def _generate_thumbnail(saved_path, resource_type, stored_name):
                     "pdftoppm",
                     "-jpeg",
                     "-f", "1", "-l", "1",
+                    # -singlefile writes exactly "<prefix>.jpg". Without it
+                    # pdftoppm zero-pads the page suffix to the document's
+                    # page count ("-01.jpg" for 10+ pages), which broke
+                    # thumbnails for longer PDFs.
+                    "-singlefile",
                     "-scale-to-x", "320",
                     "-scale-to-y", "-1",
                     saved_path,
-                    thumb_path[:-4],  # pdftoppm appends "-1.jpg" itself
+                    thumb_path[:-4],  # pdftoppm appends ".jpg" itself
                 ],
                 check=True,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 timeout=30,
             )
-            produced = thumb_path[:-4] + "-1.jpg"
-            if os.path.exists(produced):
-                os.replace(produced, thumb_path)
         elif resource_type == "video":
             subprocess.run(
                 [
@@ -511,6 +513,26 @@ def _generate_thumbnail(saved_path, resource_type, stored_name):
     except Exception as e:
         print(f"WARNING: thumbnail generation failed for {stored_name}: {e}")
         return None
+
+
+def _backfill_thumbnails():
+    """Regenerate thumbnails for resources that don't have one (e.g. uploaded
+    before a generation bug was fixed, or before ffmpeg/pdftoppm was
+    installed). Runs once at startup; failures are left as fallback icons."""
+    for resource in db.list_resources():
+        if resource["thumbnail"]:
+            continue
+        saved_path = os.path.join(TUTORIALS_DIR, resource["filename"])
+        if not os.path.exists(saved_path):
+            continue
+        thumbnail = _generate_thumbnail(
+            saved_path, resource["resource_type"], resource["filename"]
+        )
+        if thumbnail:
+            db.set_resource_thumbnail(resource["id"], thumbnail)
+
+
+_backfill_thumbnails()
 
 
 if __name__ == "__main__":
