@@ -4,6 +4,7 @@ Builds the final PDF test report for a completed session using reportlab.
 """
 import os
 from datetime import datetime
+from xml.sax.saxutils import escape
 
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
@@ -105,6 +106,105 @@ def evaluate_webcam(result):
     return "PASS", "Camera detected and image confirmed clear."
 
 
+# Network test minimums. Same four metrics macOS's `networkQuality` reports;
+# measured here in the browser against Cloudflare's speed-test servers.
+NETWORK_THRESHOLDS = {
+    "min_download_mbps": 20,
+    "min_upload_mbps": 5,
+    "max_idle_latency_ms": 50,
+    "min_responsiveness": "Medium",
+}
+# Apple doesn't publish exact RPM bands; these match observed macOS output.
+RESPONSIVENESS_BANDS = [(1000, "High"), (200, "Medium"), (0, "Low")]
+RESPONSIVENESS_ORDER = ["Low", "Medium", "High"]
+
+CONNECTION_PATHS = {
+    "direct": "Directly to the ISP modem/router (a single box)",
+    "router": "Through a separate router",
+    "extender": "Through a Wi-Fi extender",
+    "mesh": "Through a mesh Wi-Fi system",
+    "cellular": "Through a cellular/5G gateway or hotspot",
+    "unsure": "Not sure",
+}
+
+
+def responsiveness_label(rpm):
+    if rpm is None:
+        return None
+    for floor, label in RESPONSIVENESS_BANDS:
+        if rpm >= floor:
+            return label
+    return "Low"
+
+
+def evaluate_network(result):
+    if not result:
+        return "FAIL", "No data captured."
+    reason = (result.get("test_skipped_reason") or "").strip()
+    down = result.get("download_mbps")
+    if down is None:
+        if reason:
+            return "PARTIAL", f"Speed test could not be run. Advisor's explanation: {reason}"
+        return "FAIL", "The speed test was not run and no explanation was provided."
+
+    t = NETWORK_THRESHOLDS
+    up = result.get("upload_mbps")
+    idle = result.get("idle_latency_ms")
+    resp = responsiveness_label(result.get("rpm"))
+    problems = []
+    if down < t["min_download_mbps"]:
+        problems.append(f"download {down:.1f} Mbps (min {t['min_download_mbps']})")
+    if up is None or up < t["min_upload_mbps"]:
+        problems.append(f"upload {up or 0:.1f} Mbps (min {t['min_upload_mbps']})")
+    if idle is None or idle > t["max_idle_latency_ms"]:
+        problems.append(f"idle latency {idle or 0:.0f} ms (max {t['max_idle_latency_ms']})")
+    if resp is None or RESPONSIVENESS_ORDER.index(resp) < RESPONSIVENESS_ORDER.index(
+        t["min_responsiveness"]
+    ):
+        problems.append(f"responsiveness {resp or 'unknown'} (min {t['min_responsiveness']})")
+    if problems:
+        return "FAIL", "Below minimum: " + "; ".join(problems) + "."
+    return "PASS", "All network minimums met."
+
+
+def network_warnings(result):
+    """Best-effort findings that never fail the report on their own."""
+    warnings = []
+    if not result:
+        return warnings
+    path = result.get("connection_path")
+    if path and path not in ("direct", "unsure"):
+        warnings.append(
+            f"Advisor reports another device between the Mac and the ISP modem "
+            f"({CONNECTION_PATHS.get(path, path)})."
+        )
+    if result.get("warp") in ("on", "plus"):
+        warnings.append("Cloudflare WARP VPN is active on this connection.")
+    if result.get("zt_gateway") == "on":
+        warnings.append("Traffic is filtered through a Cloudflare Zero Trust gateway.")
+    isp = result.get("isp_lookup") or {}
+    kind = isp.get("kind")
+    org = isp.get("org") or ""
+    if kind == "cellular":
+        warnings.append(
+            f"Public IP belongs to a cellular provider ({org}) - likely a cellular/5G "
+            "gateway or hotspot, even if another device is in between."
+        )
+    elif kind == "satellite":
+        warnings.append(f"Public IP belongs to a satellite provider ({org}).")
+    elif kind == "relay" and result.get("warp") not in ("on", "plus"):
+        warnings.append(
+            f"Traffic exits through {isp.get('kind_label')} - iCloud Private Relay or a "
+            "similar relay/VPN is likely active."
+        )
+    elif kind == "vpn_hosting":
+        warnings.append(
+            f"Traffic exits through a data centre / VPN / security provider ({org}) "
+            "instead of a home ISP - a VPN on the Mac, router or ISP side is likely."
+        )
+    return warnings
+
+
 def overall_from(statuses):
     if "FAIL" in statuses:
         return "FAIL"
@@ -138,6 +238,7 @@ def generate(
     keyboard,
     headset,
     webcam,
+    network=None,
     started_at=None,
     network_type=None,
     client_ip=None,
@@ -150,8 +251,9 @@ def generate(
     keyboard_status, keyboard_note = evaluate_keyboard(keyboard)
     headset_status, headset_note = evaluate_headset(headset)
     webcam_status, webcam_note = evaluate_webcam(webcam)
+    network_status, network_note = evaluate_network(network)
     overall = overall_from(
-        [mouse_status, keyboard_status, headset_status, webcam_status]
+        [mouse_status, keyboard_status, headset_status, webcam_status, network_status]
     )
 
     doc = SimpleDocTemplate(
@@ -165,7 +267,7 @@ def generate(
     styles = getSampleStyleSheet()
     story = []
 
-    story.append(Paragraph("Peripheral Test Report", styles["Title"]))
+    story.append(Paragraph("Onboarding Test Report", styles["Title"]))
     story.append(Spacer(1, 10))
 
     started_str = "Unknown"
@@ -294,10 +396,63 @@ def generate(
                     )
                 )
 
+    story.append(Spacer(1, 16))
+
+    # Network section
+    story.append(Paragraph(f"Network Test &mdash; {network_status}", styles["Heading2"]))
+    story.append(Paragraph(escape(network_note), styles["Normal"]))
+    if network:
+        t = NETWORK_THRESHOLDS
+
+        def _num(key, fmt):
+            v = network.get(key)
+            return fmt.format(v) if isinstance(v, (int, float)) else "Not measured"
+
+        resp = responsiveness_label(network.get("rpm"))
+        isp = network.get("isp_lookup") or {}
+        if isp.get("status") == "ok":
+            isp_text = f"{isp.get('org')} (AS{isp.get('asn')}, {isp.get('country')})"
+        else:
+            isp_text = f"Unknown - {isp.get('reason', 'not looked up')}"
+        rows = [
+            ["Downlink capacity", f"{_num('download_mbps', '{:.1f} Mbps')}  (min {t['min_download_mbps']})"],
+            ["Uplink capacity", f"{_num('upload_mbps', '{:.1f} Mbps')}  (min {t['min_upload_mbps']})"],
+            ["Idle latency", f"{_num('idle_latency_ms', '{:.0f} ms')}  (max {t['max_idle_latency_ms']})"],
+            [
+                "Responsiveness",
+                (f"{resp} ({network.get('rpm'):.0f} RPM)" if resp else "Not measured")
+                + f"  (min {t['min_responsiveness']})",
+            ],
+            ["Jitter", _num("jitter_ms", "{:.1f} ms")],
+            ["Latency under load", _num("loaded_latency_ms", "{:.0f} ms")],
+            ["Connection path (advisor-reported)", CONNECTION_PATHS.get(network.get("connection_path"), "Not answered")],
+            ["Internet provider (from public IP)", isp_text],
+            ["Cloudflare WARP VPN", {"on": "On", "plus": "On (WARP+)", "off": "Off"}.get(network.get("warp"), "Unknown")],
+        ]
+        if network.get("test_skipped_reason"):
+            rows.append(["Reason speed test was not run", network.get("test_skipped_reason")])
+        story.append(Spacer(1, 6))
+        story.append(_section_table(rows))
+        warnings = network_warnings(network)
+        if warnings:
+            story.append(Spacer(1, 6))
+            story.append(Paragraph("<b>Warnings (do not affect the result):</b>", styles["Normal"]))
+            for w in warnings:
+                story.append(Paragraph(f"&bull; {escape(w)}", styles["Normal"]))
+        story.append(Spacer(1, 4))
+        story.append(
+            Paragraph(
+                "<font size=7>Measured in the browser against Cloudflare's speed-test "
+                "servers. Responsiveness bands (Low &lt;200, Medium 200-999, High 1000+ RPM) "
+                "approximate macOS networkQuality. Provider/VPN findings are best-effort.</font>",
+                styles["Normal"],
+            )
+        )
+
     story.append(Spacer(1, 24))
     story.append(
         Paragraph(
-            "Generated automatically by the Peripheral Test Webapp.",
+            "Generated automatically by IT Onboarding Tools.",
             styles["Normal"],
         )
     )

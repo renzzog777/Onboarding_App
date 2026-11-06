@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Peripheral Tests{% endblock %}
+{% block title %}Onboarding Tests{% endblock %}
 {% block content %}
 <div class="card">
-    <h1>Start a peripheral test</h1>
-    <p class="muted">Enter the employee's details to begin testing the mouse, keyboard, headset and webcam on this Mac.</p>
+    <h1>Start the onboarding tests</h1>
+    <p class="muted">Enter the employee's details to begin testing the mouse, keyboard, headset, webcam and network connection on this Mac.</p>
     <form method="POST" action="{{ url_for('start') }}">
         <label for="full_name">Employee full name</label>
         <input type="text" id="full_name" name="full_name" required autocomplete="off">

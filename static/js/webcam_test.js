@@ -52,7 +52,7 @@
         captureError.style.display = "none";
 
         finishBtn.disabled = true;
-        finishBtn.textContent = "Generating report...";
+        finishBtn.textContent = "Saving...";
         try {
             const payload = {
                 device_label: deviceLabel,
@@ -67,7 +67,7 @@
         } catch (err) {
             alert("Could not save webcam test result: " + err.message);
             finishBtn.disabled = false;
-            finishBtn.textContent = "Finish Test & Generate Report";
+            finishBtn.textContent = "Save & Continue";
         }
     });
 })();

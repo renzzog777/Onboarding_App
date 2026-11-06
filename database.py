@@ -1,6 +1,6 @@
 """
 database.py
-Lightweight SQLite persistence layer for the peripheral test webapp.
+Lightweight SQLite persistence layer for the onboarding test webapp.
 No ORM - plain sqlite3, kept intentionally simple.
 """
 import sqlite3
@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "data", "tests.db")
 
-TEST_ORDER = ["mouse", "keyboard", "headset", "webcam"]
+TEST_ORDER = ["mouse", "keyboard", "headset", "webcam", "network"]
 
 
 def get_conn():
@@ -67,7 +67,7 @@ def init_db():
         pass
     # Same lightweight migration pattern for sessions created before the
     # network_type/client_ip columns existed.
-    for column in ("network_type", "client_ip", "network_raw_info"):
+    for column in ("network_type", "client_ip", "network_raw_info", "network_result"):
         try:
             conn.execute(f"ALTER TABLE sessions ADD COLUMN {column} TEXT")
         except sqlite3.OperationalError:

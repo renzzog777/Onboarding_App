@@ -1,7 +1,8 @@
-# IT Onboarding Tools — Peripheral Test Webapp
+# IT Onboarding Tools — Onboarding Test Webapp
 
 A self-service webapp for IT advisors to test the mouse, keyboard, headset,
-and webcam on macOS equipment before it's handed off to an employee, and
+webcam and network connection on macOS equipment before it's handed off to
+an employee, and
 automatically generate a PDF report for IT's records. It also hosts a
 library of macOS setup tutorials (PDFs) that advisors can browse.
 
@@ -30,13 +31,13 @@ device APIs — no software installation required on the advisor's Mac.
 
 ### Home page
 A dark, minimalist landing page ("IT Onboarding Tools") with two entry
-points: **Peripheral Tests** and **Tutorials**.
+points: **Onboarding Tests** and **Tutorials**.
 
-### Peripheral testing flow
+### Onboarding testing flow
 An advisor enters the employee's **full name** and **CIM number**, selects
 whether the Mac is on **Wi-Fi or Ethernet** (with a hint pointing to
 System Settings → Network → Ethernet for advisors who aren't sure), and is
-walked through four tests in order:
+walked through five tests in order:
 
 1. **Mouse test** — click zone detects left/right/middle clicks and scroll
    up/down. Flags an **unintended double-click** (two clicks under 60ms
@@ -56,12 +57,38 @@ walked through four tests in order:
    and is downloadable later from the admin History page — the test
    cannot be completed without a recording.
 4. **Webcam test** — live camera preview with snapshot capture. The
-   advisor **cannot finish the report** unless they either capture a
+   advisor **cannot continue** unless they either capture a
    snapshot or provide a written explanation for why one couldn't be
    taken (e.g. "camera hardware failed to initialize") — enforced both in
    the browser and on the server, so this can't be bypassed.
+5. **Network test** — runs in the browser (Terminal is restricted on
+   advisor Macs) against Cloudflare's public speed-test servers
+   (`speed.cloudflare.com`), measuring the same metrics as macOS's
+   `networkQuality`. The section **fails** if any minimum is missed:
 
-After the webcam step, a **PDF report is generated automatically** and the
+   | Metric | Minimum |
+   |---|---|
+   | Downlink capacity | 20 Mbps |
+   | Uplink capacity | 5 Mbps |
+   | Idle latency | 50 ms or less |
+   | Responsiveness | Medium or better (Low < 200, Medium 200–999, High 1000+ RPM) |
+
+   Jitter and latency under load are also recorded. Thresholds live in
+   `NETWORK_THRESHOLDS` in `pdf_report.py`. If the test can't run, the
+   advisor must explain why (section becomes `PARTIAL`).
+
+   Best-effort findings are shown as **warnings that never fail the
+   report**: the advisor answers how the Mac is connected (directly to the
+   ISP modem, router, Wi-Fi extender, mesh, cellular gateway — a web page
+   can't see the local network, so this is advisor-reported); the server
+   looks up who owns the Mac's public IP (Team Cymru whois, no API key,
+   `network_lookup.py`) to flag cellular carriers, satellite, iCloud
+   Private Relay–style relays, and data-centre/VPN/security providers;
+   and `1.1.1.1/cdn-cgi/trace` flags Cloudflare WARP. The server needs
+   outbound access to `whois.cymru.com:43` for the provider lookup; if
+   it's blocked, the report just shows the provider as unknown.
+
+After the network step, a **PDF report is generated automatically** and the
 result (`PASS` / `PARTIAL` / `FAIL` per section and overall) is saved.
 Advisors see their result on screen but do **not** get the PDF — only
 admins can retrieve it, from History.
@@ -75,7 +102,8 @@ admins can retrieve it, from History.
 - Overall PASS/PARTIAL/FAIL banner
 - A detailed, per-section breakdown (buttons detected, keys tested,
   audio/mic confirmation, webcam snapshot embedded inline, or the
-  advisor's explanation if one wasn't captured)
+  advisor's explanation if one wasn't captured, network speeds against
+  the minimums, internet provider, and connection/VPN warnings)
 
 ### Admin area (password-gated)
 Accessible via **Admin** in the nav, gated by an `ADMIN_PASSWORD`
@@ -122,6 +150,7 @@ accent color is used throughout rather than a generic bright accent.
 app.py                  Flask routes and request handling
 database.py              SQLite persistence (sessions + tutorial resources)
 pdf_report.py            Builds the PDF report and computes pass/fail
+network_lookup.py        Public-IP owner lookup for the network test (cellular/VPN flags)
 templates/               Jinja2 HTML pages
 static/css, static/js    Styling and per-test device logic
 reports/                 Generated PDFs, webcam snapshots, voice recordings

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Network Test{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="session-info">{{ test_session['full_name'] }} &middot; CIM {{ test_session['cim_number'] }}</div>
+    <div class="progress-steps">
+        <span class="done">1. Mouse</span>
+        <span class="done">2. Keyboard</span>
+        <span class="done">3. Headset</span>
+        <span class="done">4. Webcam</span>
+        <span class="active">5. Network</span>
+    </div>
+
+    <h1>Network test</h1>
+    <p class="muted">Measures download and upload speed, latency, jitter and responsiveness. Close other apps that use the internet (video calls, downloads, backups), then start the test. It takes about 30 seconds.</p>
+
+    <label for="connectionPath">How is this Mac connected to the internet?</label>
+    <select id="connectionPath">
+        <option value="" disabled selected>-- Select --</option>
+        {% for key, label in connection_paths.items() %}
+        <option value="{{ key }}">{{ label }}</option>
+        {% endfor %}
+    </select>
+    <p class="muted" style="font-size:0.82rem;">A web page can't see the devices on the home network, so ask the employee. An extender or mesh "satellite" is usually a small box plugged in away from the main modem; a cellular gateway uses a SIM card.</p>
+
+    <button type="button" class="secondary" id="runBtn">Start Network Test</button>
+
+    <div class="waiting-indicator" id="progress" style="display:none;">
+        <span class="spinner"></span>
+        <span id="progressText">Starting...</span>
+    </div>
+    <p id="runError" class="error" style="display:none;"></p>
+
+    <div class="table-scroll" id="resultsWrap" style="display:none;">
+    <table class="history-table">
+        <thead><tr><th>Metric</th><th>Result</th><th>Minimum</th><th></th></tr></thead>
+        <tbody>
+            <tr><td>Downlink capacity</td><td id="rDown">-</td><td>{{ thresholds.min_download_mbps }} Mbps</td><td id="sDown"></td></tr>
+            <tr><td>Uplink capacity</td><td id="rUp">-</td><td>{{ thresholds.min_upload_mbps }} Mbps</td><td id="sUp"></td></tr>
+            <tr><td>Idle latency</td><td id="rIdle">-</td><td>&le; {{ thresholds.max_idle_latency_ms }} ms</td><td id="sIdle"></td></tr>
+            <tr><td>Responsiveness</td><td id="rResp">-</td><td>{{ thresholds.min_responsiveness }}</td><td id="sResp"></td></tr>
+            <tr><td>Jitter</td><td id="rJitter">-</td><td class="muted">info</td><td></td></tr>
+            <tr><td>Latency under load</td><td id="rLoaded">-</td><td class="muted">info</td><td></td></tr>
+            <tr><td>Cloudflare WARP VPN</td><td id="rWarp">-</td><td class="muted">info</td><td></td></tr>
+        </tbody>
+    </table>
+    </div>
+    <p class="muted" style="font-size:0.82rem;">The internet provider and VPN check run on the server when you continue, and appear in the PDF report.</p>
+
+    <label for="skipReasonInput">If the speed test can't be run, explain why here</label>
+    <textarea id="skipReasonInput" rows="3" placeholder="e.g. Speed-test sites are blocked on this network, no internet connection, etc."></textarea>
+
+    <p id="finishError" class="error" style="display:none;"></p>
+
+    <button id="finishBtn">Finish Test &amp; Generate Report</button>
+</div>
+<script>
+    window.SESSION_ID = {{ test_session['id'] }};
+    window.NETWORK_THRESHOLDS = {{ thresholds | tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/network_test.js') }}"></script>
+{% endblock %}

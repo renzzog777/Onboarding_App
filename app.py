@@ -1,13 +1,14 @@
 """
 app.py
-Peripheral Test Webapp - Flask entry point.
+Onboarding Test Webapp - Flask entry point.
 
 Flow:
   /               -> advisor enters full name + CIM number
   /test/mouse     -> mouse test
   /test/keyboard  -> keyboard test
   /test/headset   -> headset (speaker + mic) test
-  /test/webcam    -> webcam test (last step -> auto-generates PDF + saves)
+  /test/webcam    -> webcam test
+  /test/network   -> network test (last step -> auto-generates PDF + saves)
   /result/<id>    -> shows final result + download link
   /history        -> searchable list of past sessions
 """
@@ -33,6 +34,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.utils import secure_filename
 
 import database as db
+import network_lookup
 import pdf_report
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -90,7 +92,7 @@ os.makedirs(RECORDINGS_DIR, exist_ok=True)
 os.makedirs(TUTORIALS_DIR, exist_ok=True)
 os.makedirs(THUMBNAIL_DIR, exist_ok=True)
 
-TEST_ORDER = db.TEST_ORDER  # ["mouse", "keyboard", "headset", "webcam"]
+TEST_ORDER = db.TEST_ORDER  # ["mouse", "keyboard", "headset", "webcam", "network"]
 
 
 def admin_required(view):
@@ -160,6 +162,17 @@ def test_headset(session_id):
 def test_webcam(session_id):
     session = _require_session(session_id)
     return render_template("test_webcam.html", test_session=session)
+
+
+@app.route("/test/network/<int:session_id>")
+def test_network(session_id):
+    session = _require_session(session_id)
+    return render_template(
+        "test_network.html",
+        test_session=session,
+        thresholds=pdf_report.NETWORK_THRESHOLDS,
+        connection_paths=pdf_report.CONNECTION_PATHS,
+    )
 
 
 def _save_snapshot(session_id, data_url):
@@ -244,6 +257,19 @@ def save_test(test_type, session_id):
         if recording_path:
             data["recording_path"] = recording_path
 
+    if test_type == "network":
+        measured = isinstance(data.get("download_mbps"), (int, float))
+        has_reason = bool((data.get("test_skipped_reason") or "").strip())
+        if not measured and not has_reason:
+            abort(
+                400,
+                description="Run the speed test or explain why it couldn't be run.",
+            )
+        if data.get("connection_path") not in pdf_report.CONNECTION_PATHS:
+            abort(400, description="Please answer how this Mac is connected.")
+        # Always looked up server-side, never trusted from the browser.
+        data["isp_lookup"] = network_lookup.lookup(request.remote_addr)
+
     db.save_test_result(session_id, test_type, data)
 
     idx = TEST_ORDER.index(test_type)
@@ -252,7 +278,7 @@ def save_test(test_type, session_id):
         next_test = TEST_ORDER[idx + 1]
         next_url = url_for(f"test_{next_test}", session_id=session_id)
     else:
-        # Webcam was the last test - finalize automatically.
+        # Network was the last test - finalize automatically.
         import json as _json
 
         refreshed = db.get_session(session_id)
@@ -260,6 +286,7 @@ def save_test(test_type, session_id):
         keyboard = _json.loads(refreshed["keyboard_result"] or "{}")
         headset = _json.loads(refreshed["headset_result"] or "{}")
         webcam = _json.loads(refreshed["webcam_result"] or "{}")
+        network = _json.loads(refreshed["network_result"] or "{}")
         pdf_path, overall = pdf_report.generate(
             session_id,
             refreshed["full_name"],
@@ -268,6 +295,7 @@ def save_test(test_type, session_id):
             keyboard,
             headset,
             webcam,
+            network=network,
             started_at=refreshed["created_at"],
             network_type=refreshed["network_type"],
             client_ip=refreshed["client_ip"],
@@ -293,7 +321,7 @@ def download_report(session_id):
     session = _require_session(session_id)
     if not session["pdf_path"] or not os.path.exists(session["pdf_path"]):
         abort(404, description="Report not found.")
-    download_name = f"peripheral_test_{session['cim_number']}_{session_id}.pdf"
+    download_name = f"onboarding_test_{session['cim_number']}_{session_id}.pdf"
     return send_file(session["pdf_path"], as_attachment=True, download_name=download_name)
 
 
