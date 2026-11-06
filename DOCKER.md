@@ -9,7 +9,7 @@ inside the image rather than depending on whatever Python the host ships.
 
 ## Files
 
-- `Dockerfile` - builds the app image (Python 3.12 + ffmpeg + poppler-utils)
+- `Dockerfile` - builds the app image (Python 3.12-slim + poppler-utils)
 - `.dockerignore` - keeps secrets/build artifacts out of the image
 - `docker-compose.yml` - the two-container production stack (app + Caddy)
 - `Caddyfile` - reverse proxy config; Caddy handles HTTPS automatically

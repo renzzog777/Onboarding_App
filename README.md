@@ -3,7 +3,7 @@
 A self-service webapp for IT advisors to test the mouse, keyboard, headset,
 and webcam on macOS equipment before it's handed off to an employee, and
 automatically generate a PDF report for IT's records. It also hosts a
-library of macOS setup tutorials (PDFs and videos) that advisors can browse.
+library of macOS setup tutorials (PDFs) that advisors can browse.
 
 Built with Flask, SQLite, and vanilla JavaScript using native browser
 device APIs — no software installation required on the advisor's Mac.
@@ -86,16 +86,15 @@ environment variable:
   voice recording. Admins can **permanently delete** a session, which
   removes its PDF, webcam snapshot, and voice recording from disk along
   with the database record.
-- **Manage Tutorials** — upload PDF guides and video tutorials (with a
-  title and type), or delete existing ones. Thumbnails are generated
-  automatically: the first page of a PDF via `pdftoppm` (poppler-utils),
-  or a frame from a video via `ffmpeg`. Generation is best-effort — a
-  failed thumbnail never blocks the upload, it just falls back to a text
-  placeholder.
+- **Manage Tutorials** — upload PDF guides (with a title; PDFs only,
+  100 MB max), or delete existing ones. Thumbnails are generated
+  automatically from the first page of each PDF via `pdftoppm`
+  (poppler-utils). Generation is best-effort — a failed thumbnail never
+  blocks the upload, it just falls back to a text placeholder.
 
 ### Public Tutorials page
-Advisors browse everything uploaded, grouped into PDF guides and video
-tutorials, each shown with its thumbnail, and can download directly.
+Advisors browse the uploaded PDF guides, each shown with its thumbnail,
+and can download them directly.
 
 ### Appearance
 A dark, minimalist theme pairing **Fraunces** (serif, for headings) with
@@ -110,7 +109,6 @@ accent color is used throughout rather than a generic bright accent.
 - **Database:** SQLite (no separate database server)
 - **PDF generation:** ReportLab
 - **PDF thumbnails:** `pdftoppm` (poppler-utils)
-- **Video thumbnails:** `ffmpeg`
 - **Frontend:** Server-rendered Jinja2 templates, vanilla JavaScript (no
   framework, no build step), native browser APIs (`getUserMedia`,
   `MediaRecorder`, Web Audio API, Canvas)
@@ -128,9 +126,9 @@ templates/               Jinja2 HTML pages
 static/css, static/js    Styling and per-test device logic
 reports/                 Generated PDFs, webcam snapshots, voice recordings
 data/                    SQLite database file (created at runtime)
-uploads/tutorials/       Admin-uploaded PDF/video tutorials + thumbnails
+uploads/tutorials/       Admin-uploaded PDF tutorials + thumbnails
 
-Dockerfile               Production image (Python 3.12-slim + ffmpeg + poppler-utils)
+Dockerfile               Production image (Python 3.12-slim + poppler-utils)
 .dockerignore
 docker-compose.yml        App + Caddy (reverse proxy/HTTPS) + Watchtower (auto-updates)
 Caddyfile                 Reverse proxy config for the docker-compose path
@@ -171,9 +169,8 @@ self-signed certificate — browsers require HTTPS (or `localhost`) for
 camera/microphone access, which is why the dev server enables TLS even
 locally. You'll see a certificate warning the first time; click through it.
 
-You'll also need `ffmpeg` and `poppler-utils` installed locally
-(`brew install ffmpeg poppler` on macOS) for tutorial thumbnail generation
-to work in development.
+You'll also need poppler installed locally (`brew install poppler` on
+macOS) for PDF tutorial thumbnail generation to work in development.
 
 ---
 
@@ -255,7 +252,7 @@ SQLite, stored at `data/tests.db`, with two tables:
 - **`sessions`** — one row per test session: employee info, timestamps,
   network type/IP, each test's results (stored as JSON per section), the
   overall result, and the path to the generated PDF.
-- **`resources`** — uploaded tutorials: title, type (pdf/video), stored
+- **`resources`** — uploaded tutorials: title, type (always "pdf"), stored
   filename, original filename, and thumbnail filename.
 
 Schema changes are applied automatically at startup via a lightweight

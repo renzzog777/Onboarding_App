@@ -156,7 +156,7 @@ def delete_session(session_id):
     conn.close()
 
 
-# --- Tutorial resources (admin-uploaded PDFs / videos) ---
+# --- Tutorial resources (admin-uploaded PDFs) ---
 
 
 def add_resource(title, resource_type, filename, original_filename, thumbnail=None):

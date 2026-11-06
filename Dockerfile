@@ -8,13 +8,12 @@
 
 FROM python:3.12-slim
 
-# ffmpeg -> video tutorial thumbnails, poppler-utils (pdftoppm) -> PDF
-# thumbnails. Both are subprocess-based, not compiled Python packages -
-# the same lesson from the PyMuPDF failure: prefer a system tool over a
+# poppler-utils (pdftoppm) -> PDF tutorial thumbnails. It's a
+# subprocess-based system tool, not a compiled Python package - the same
+# lesson from the PyMuPDF failure: prefer a system tool over a
 # C-extension wheel when one exists, it travels far better across
 # platforms.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        ffmpeg \
         poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 

@@ -44,7 +44,6 @@ SECRET_KEY_FILE = os.path.join(BASE_DIR, "data", ".flask_secret")
 
 ALLOWED_EXTENSIONS = {
     "pdf": {"pdf"},
-    "video": {"mp4", "mov", "m4v"},
 }
 
 # The admin password gates the tutorial upload/delete pages. Set it via the
@@ -76,7 +75,7 @@ def _load_or_create_secret_key():
 
 app = Flask(__name__)
 app.secret_key = _load_or_create_secret_key()
-app.config["MAX_CONTENT_LENGTH"] = 2 * 1024 * 1024 * 1024  # 2GB, for video uploads
+app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024  # 100MB, for PDF uploads
 
 # The app runs behind Nginx (see deploy/nginx.conf), which sets
 # X-Forwarded-For and X-Forwarded-Proto. Without ProxyFix, request.remote_addr
@@ -362,8 +361,7 @@ def delete_session(session_id):
 def tutorials():
     resources = db.list_resources()
     pdfs = [r for r in resources if r["resource_type"] == "pdf"]
-    videos = [r for r in resources if r["resource_type"] == "video"]
-    return render_template("tutorials.html", pdfs=pdfs, videos=videos)
+    return render_template("tutorials.html", pdfs=pdfs)
 
 
 @app.route("/tutorials/<int:resource_id>/download")
@@ -407,14 +405,14 @@ def admin_resources():
 @admin_required
 def upload_resource():
     title = request.form.get("title", "").strip()
-    resource_type = request.form.get("resource_type", "")
+    resource_type = "pdf"
     file = request.files.get("file")
 
-    if not title or resource_type not in ALLOWED_EXTENSIONS or not file or not file.filename:
+    if not title or not file or not file.filename:
         return render_template(
             "admin_resources.html",
             resources=db.list_resources(),
-            error="Title, type, and a file are all required.",
+            error="A title and a PDF file are both required.",
         )
 
     ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
@@ -492,21 +490,6 @@ def _generate_thumbnail(saved_path, resource_type, stored_name):
                 stderr=subprocess.DEVNULL,
                 timeout=30,
             )
-        elif resource_type == "video":
-            subprocess.run(
-                [
-                    "ffmpeg", "-y",
-                    "-i", saved_path,
-                    "-ss", "00:00:01",
-                    "-vframes", "1",
-                    "-vf", "scale=320:-1",
-                    thumb_path,
-                ],
-                check=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=30,
-            )
         else:
             return None
         return thumb_name if os.path.exists(thumb_path) else None
@@ -517,7 +500,7 @@ def _generate_thumbnail(saved_path, resource_type, stored_name):
 
 def _backfill_thumbnails():
     """Regenerate thumbnails for resources that don't have one (e.g. uploaded
-    before a generation bug was fixed, or before ffmpeg/pdftoppm was
+    before a generation bug was fixed, or before pdftoppm was
     installed). Runs once at startup; failures are left as fallback icons."""
     for resource in db.list_resources():
         if resource["thumbnail"]:

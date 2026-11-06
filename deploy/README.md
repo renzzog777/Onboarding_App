@@ -57,12 +57,12 @@ requirements.txt` work exactly as written.
 
 ```bash
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y python3-venv python3-pip nginx git ufw ffmpeg poppler-utils
+sudo apt install -y python3-venv python3-pip nginx git ufw poppler-utils
 ```
 
-`ffmpeg` generates video tutorial thumbnails; `poppler-utils` (specifically
-`pdftoppm`) generates PDF thumbnails. Both are plain system tools invoked
-as subprocesses - no PDF/video-processing Python package is needed, which
+`poppler-utils` (specifically `pdftoppm`) generates PDF thumbnails. It's a
+plain system tool invoked as a subprocess - no PDF-processing Python
+package is needed, which
 avoids a real problem: PyMuPDF (an earlier approach) has no prebuilt wheel
 for newer Python versions on ARM64, and its source build breaks against
 Python 3.14's headers. If you already tried installing PyMuPDF, no need to

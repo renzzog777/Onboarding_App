@@ -3,20 +3,14 @@
 {% block content %}
 <div class="card">
     <h1>Manage tutorials</h1>
-    <p class="muted">Upload macOS setup PDFs and video tutorials for advisors to download from the public Tutorials page.</p>
+    <p class="muted">Upload macOS setup PDFs for advisors to download from the public Tutorials page.</p>
 
     <form method="POST" action="{{ url_for('upload_resource') }}" enctype="multipart/form-data">
         <label for="title">Title</label>
         <input type="text" id="title" name="title" required>
 
-        <label for="resource_type">Type</label>
-        <select id="resource_type" name="resource_type" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:6px;font-size:1rem;margin-top:0;">
-            <option value="pdf">PDF guide</option>
-            <option value="video">Video tutorial</option>
-        </select>
-
-        <label for="file">File</label>
-        <input type="file" id="file" name="file" required>
+        <label for="file">PDF file</label>
+        <input type="file" id="file" name="file" accept=".pdf,application/pdf" required>
 
         {% if error %}<p class="error">{{ error }}</p>{% endif %}
 
@@ -38,7 +32,7 @@
                     {% if r['thumbnail'] %}
                         <img class="resource-thumb-sm" src="{{ url_for('resource_thumbnail', resource_id=r['id']) }}" alt="">
                     {% else %}
-                        <span class="resource-thumb-sm resource-thumb-fallback">{{ 'PDF' if r['resource_type'] == 'pdf' else 'VIDEO' }}</span>
+                        <span class="resource-thumb-sm resource-thumb-fallback">PDF</span>
                     {% endif %}
                 </td>
                 <td>{{ r['title'] }}</td>
