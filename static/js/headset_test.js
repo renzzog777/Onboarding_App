@@ -59,7 +59,7 @@
                 analyser.getByteFrequencyData(data);
                 const avg = data.reduce((a, b) => a + b, 0) / data.length;
                 const pct = Math.min(100, Math.round((avg / 128) * 100));
-                meterBar.style.width = pct + "%";
+                meterBar.style.transform = `scaleX(${pct / 100})`;
                 if (pct > peakLevel) peakLevel = pct;
                 if (pct > 8) micDetected = true;
                 requestAnimationFrame(tick);

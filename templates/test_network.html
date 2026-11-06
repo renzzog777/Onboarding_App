@@ -21,7 +21,7 @@
         <option value="{{ key }}">{{ label }}</option>
         {% endfor %}
     </select>
-    <p class="muted" style="font-size:0.82rem;">A web page can't see the devices on the home network, so ask the employee. An extender or mesh "satellite" is usually a small box plugged in away from the main modem; a cellular gateway uses a SIM card.</p>
+    <p class="muted hint">A web page can't see the devices on the home network, so ask the employee. An extender or mesh "satellite" is usually a small box plugged in away from the main modem; a cellular gateway uses a SIM card.</p>
 
     <button type="button" class="secondary" id="runBtn">Start Network Test</button>
 
@@ -45,7 +45,7 @@
         </tbody>
     </table>
     </div>
-    <p class="muted" style="font-size:0.82rem;">The internet provider and VPN check run on the server when you continue, and appear in the PDF report.</p>
+    <p class="muted hint">The internet provider and VPN check run on the server when you continue, and appear in the PDF report.</p>
 
     <label for="skipReasonInput">If the speed test can't be run, explain why here</label>
     <textarea id="skipReasonInput" rows="3" placeholder="e.g. Speed-test sites are blocked on this network, no internet connection, etc."></textarea>

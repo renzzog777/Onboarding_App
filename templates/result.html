@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Result{% endblock %}
 {% block content %}
-<div class="card" style="text-align:center;">
+<div class="card card-center">
     <h1>Test complete</h1>
     <p class="session-info">{{ test_session['full_name'] }} &middot; CIM {{ test_session['cim_number'] }}</p>
     <p><span class="result-badge {{ test_session['overall_result'] }}">{{ test_session['overall_result'] }}</span></p>
