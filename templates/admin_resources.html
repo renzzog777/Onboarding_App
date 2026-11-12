@@ -23,7 +23,7 @@
     <div class="table-scroll">
     <table class="history-table">
         <thead>
-            <tr><th></th><th>Title</th><th>Type</th><th>Uploaded</th><th></th></tr>
+            <tr><th></th><th>Title</th><th>Type</th><th>Uploaded</th>{% if assistant_enabled %}<th>Assistant</th>{% endif %}<th></th></tr>
         </thead>
         <tbody>
         {% for r in resources %}
@@ -38,6 +38,12 @@
                 <td>{{ r['title'] }}</td>
                 <td>{{ r['resource_type'] }}</td>
                 <td>{{ r['uploaded_at'][:16].replace('T', ' ') }}</td>
+                {% if assistant_enabled %}
+                <td>
+                    {% if r['id'] in indexed_ids %}<span class="status-pill PASS">Indexed</span>
+                    {% else %}<span class="status-pill in_progress" title="Refresh in a minute or two">Indexing</span>{% endif %}
+                </td>
+                {% endif %}
                 <td>
                     <a href="{{ url_for('download_tutorial', resource_id=r['id']) }}">Download</a>
                     &middot;
@@ -47,7 +53,7 @@
                 </td>
             </tr>
         {% else %}
-            <tr><td colspan="5" class="muted">No resources uploaded yet.</td></tr>
+            <tr><td colspan="{{ 6 if assistant_enabled else 5 }}" class="muted">No resources uploaded yet.</td></tr>
         {% endfor %}
         </tbody>
     </table>

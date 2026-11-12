@@ -33,6 +33,7 @@ from flask import (
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.utils import secure_filename
 
+import chatbot
 import database as db
 import network_lookup
 import pdf_report
@@ -91,6 +92,8 @@ os.makedirs(SNAPSHOT_DIR, exist_ok=True)
 os.makedirs(RECORDINGS_DIR, exist_ok=True)
 os.makedirs(TUTORIALS_DIR, exist_ok=True)
 os.makedirs(THUMBNAIL_DIR, exist_ok=True)
+
+app.register_blueprint(chatbot.bp)
 
 TEST_ORDER = db.TEST_ORDER  # ["mouse", "keyboard", "headset", "webcam", "network"]
 
@@ -389,7 +392,12 @@ def delete_session(session_id):
 def tutorials():
     resources = db.list_resources()
     pdfs = [r for r in resources if r["resource_type"] == "pdf"]
-    return render_template("tutorials.html", pdfs=pdfs)
+    return render_template(
+        "tutorials.html",
+        pdfs=pdfs,
+        assistant_enabled=chatbot.enabled(),
+        assistant_ready=bool(chatbot.indexed_resource_ids()),
+    )
 
 
 @app.route("/tutorials/<int:resource_id>/download")
@@ -425,8 +433,17 @@ def admin_logout():
 @app.route("/admin/resources")
 @admin_required
 def admin_resources():
-    resources = db.list_resources()
-    return render_template("admin_resources.html", resources=resources)
+    return _render_admin_resources()
+
+
+def _render_admin_resources(error=None):
+    return render_template(
+        "admin_resources.html",
+        resources=db.list_resources(),
+        error=error,
+        assistant_enabled=chatbot.enabled(),
+        indexed_ids=chatbot.indexed_resource_ids(),
+    )
 
 
 @app.route("/admin/resources/upload", methods=["POST"])
@@ -437,19 +454,13 @@ def upload_resource():
     file = request.files.get("file")
 
     if not title or not file or not file.filename:
-        return render_template(
-            "admin_resources.html",
-            resources=db.list_resources(),
-            error="A title and a PDF file are both required.",
-        )
+        return _render_admin_resources(error="A title and a PDF file are both required.")
 
     ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
     if ext not in ALLOWED_EXTENSIONS[resource_type]:
         allowed = ", ".join(sorted(ALLOWED_EXTENSIONS[resource_type]))
-        return render_template(
-            "admin_resources.html",
-            resources=db.list_resources(),
-            error=f"That file type isn't allowed for {resource_type}. Allowed: {allowed}",
+        return _render_admin_resources(
+            error=f"That file type isn't allowed for {resource_type}. Allowed: {allowed}"
         )
 
     safe_name = secure_filename(file.filename)
@@ -460,6 +471,7 @@ def upload_resource():
     thumbnail = _generate_thumbnail(saved_path, resource_type, stored_name)
 
     db.add_resource(title, resource_type, stored_name, file.filename, thumbnail)
+    chatbot.sync_in_background(TUTORIALS_DIR, log=app.logger.warning)
     return redirect(url_for("admin_resources"))
 
 
@@ -476,6 +488,7 @@ def delete_resource(resource_id):
             if os.path.exists(thumb_path):
                 os.remove(thumb_path)
         db.delete_resource(resource_id)
+        chatbot.sync_in_background(TUTORIALS_DIR, log=app.logger.warning)
     return redirect(url_for("admin_resources"))
 
 
@@ -544,6 +557,9 @@ def _backfill_thumbnails():
 
 
 _backfill_thumbnails()
+# Index any tutorials the assistant doesn't know about yet (e.g. uploaded
+# before GEMINI_API_KEY was set, or while Google was unreachable).
+chatbot.sync_in_background(TUTORIALS_DIR, log=app.logger.warning)
 
 
 if __name__ == "__main__":
