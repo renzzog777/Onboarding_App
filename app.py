@@ -453,8 +453,10 @@ def upload_resource():
     resource_type = "pdf"
     file = request.files.get("file")
 
-    if not title or not file or not file.filename:
-        return _render_admin_resources(error="A title and a PDF file are both required.")
+    if not file or not file.filename:
+        return _render_admin_resources(error="Choose a PDF file to upload.")
+    if not title:
+        title = _title_from_filename(file.filename)
 
     ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
     if ext not in ALLOWED_EXTENSIONS[resource_type]:
@@ -473,6 +475,14 @@ def upload_resource():
     db.add_resource(title, resource_type, stored_name, file.filename, thumbnail)
     chatbot.sync_in_background(TUTORIALS_DIR, log=app.logger.warning)
     return redirect(url_for("admin_resources"))
+
+
+def _title_from_filename(filename):
+    """'Office_WiFi_Setup.pdf' -> 'Office WiFi Setup'. Used when the admin
+    leaves the Title field blank."""
+    name = filename.replace("\\", "/").rsplit("/", 1)[-1]
+    name = os.path.splitext(name)[0].replace("_", " ")
+    return " ".join(name.split()) or "Untitled guide"
 
 
 @app.route("/admin/resources/<int:resource_id>/delete", methods=["POST"])
