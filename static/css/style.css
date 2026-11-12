@@ -332,10 +332,13 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 .home-menu {
     display: flex;
-    gap: var(--space-5);
+    flex-direction: column;
+    gap: var(--space-4);
+    max-width: 36rem;
+    margin-inline: auto;
 }
 .home-tile {
-    flex: 1 1 0;
+    flex: 0 0 auto;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -363,7 +366,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .home-tile-desc { color: var(--muted); font-size: 0.875rem; line-height: 1.4; }
 
 @media (max-width: 520px) {
-    .home-menu { flex-direction: column; gap: var(--space-3); }
+    .home-menu { gap: var(--space-3); }
     .home-tile { padding: var(--space-8) var(--space-5); }
 }
 
