@@ -1,5 +1,7 @@
 // Tutorials assistant chat panel (see chatbot.py).
-// Answers are always rendered with textContent, never as HTML (OWASP LLM05).
+// Answers are never inserted as HTML (OWASP LLM05): the small Markdown
+// subset the model uses (**bold**, `code`, bullets) is turned into DOM
+// nodes whose text is always set as plain text.
 (function () {
     const form = document.getElementById("assistantForm");
     if (!form) return;
@@ -21,14 +23,34 @@
         log.scrollTop = log.scrollHeight;
     }
 
+    // Render **bold**, `code` and "* " / "- " bullets safely.
+    function render(el, text) {
+        el.replaceChildren();
+        text.split("\n").forEach((rawLine, i) => {
+            if (i) el.append("\n");
+            const line = rawLine.replace(/^(\s*)[*-]\s+/, "$1\u2022 ");
+            const pattern = /\*\*(.+?)\*\*|`([^`]+)`/g;
+            let last = 0;
+            let m;
+            while ((m = pattern.exec(line))) {
+                if (m.index > last) el.append(line.slice(last, m.index));
+                const node = document.createElement(m[1] !== undefined ? "strong" : "code");
+                node.textContent = m[1] !== undefined ? m[1] : m[2];
+                el.append(node);
+                last = pattern.lastIndex;
+            }
+            if (last < line.length) el.append(line.slice(last));
+        });
+    }
+
     async function typeOut(el, text) {
         if (reduceMotion) {
-            el.textContent = text;
+            render(el, text);
             return;
         }
         const step = Math.max(1, Math.ceil(text.length / 300));
         for (let i = 0; i < text.length; i += step) {
-            el.textContent = text.slice(0, i + step);
+            render(el, text.slice(0, i + step));
             scrollToEnd();
             await new Promise((r) => setTimeout(r, 12));
         }
