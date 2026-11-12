@@ -1,0 +1,57 @@
+{
+  "store": "fileSearchStores/onboardingtutorials-1raw4wz3ljj6",
+  "docs": {
+    "11": {
+      "doc": "fileSearchStores/onboardingtutorials-1raw4wz3ljj6/documents/how-to-setup-the-new-sap-gu-b1z614yhkny8",
+      "title": "How to Setup the New SAP GUI 810 Rev10"
+    },
+    "12": {
+      "doc": "fileSearchStores/onboardingtutorials-1raw4wz3ljj6/documents/quick-wipe-process-on-silic-99oktcu4vr2u",
+      "title": "Quick Wipe Process on Silicon Macs (Advisor's Edition)"
+    },
+    "13": {
+      "doc": "fileSearchStores/onboardingtutorials-1raw4wz3ljj6/documents/quick-wipe-process-on-silic-dszqyn2aeeae",
+      "title": "Quick Wipe Process on Silicon Macs (IT Edition)"
+    },
+    "14": {
+      "doc": "fileSearchStores/onboardingtutorials-1raw4wz3ljj6/documents/secure-auth-passcode-app-up-f4l3zvce2aeq",
+      "title": "Secure Auth Passcode App Update"
+    },
+    "15": {
+      "doc": "fileSearchStores/onboardingtutorials-1raw4wz3ljj6/documents/transcom-equipment-setup-qu-5ioo4xc4suzr",
+      "title": "Transcom Equipment Set-Up Quick iMac v5.4"
+    },
+    "16": {
+      "doc": "fileSearchStores/onboardingtutorials-1raw4wz3ljj6/documents/transcom-equipment-setup-qu-llessk31kg7z",
+      "title": "Transcom Equipment Set-Up Quick Mac Mini v5.4"
+    },
+    "4": {
+      "doc": "fileSearchStores/onboardingtutorials-1raw4wz3ljj6/documents/full-wipe-process-on-silico-h4c2soxfhwa2",
+      "title": "Full Wipe Process on Silicon Macs"
+    },
+    "5": {
+      "doc": "fileSearchStores/onboardingtutorials-1raw4wz3ljj6/documents/how-to-access-a-mac-using-s-z4pu2ljkca4q",
+      "title": "How to Access a Mac Using Safe Mode"
+    },
+    "6": {
+      "doc": "fileSearchStores/onboardingtutorials-1raw4wz3ljj6/documents/how-to-capture-http-logs-on-2lusbum74n7z",
+      "title": "How to Capture HTTP Logs on Safari"
+    },
+    "7": {
+      "doc": "fileSearchStores/onboardingtutorials-1raw4wz3ljj6/documents/how-to-change-your-avaya-ag-zi2qmmn94q7r",
+      "title": "How to Change your Avaya Agent for Desktop to Meet the new Server Requirements"
+    },
+    "8": {
+      "doc": "fileSearchStores/onboardingtutorials-1raw4wz3ljj6/documents/how-to-configure-avaya-agen-hxmcvmorudlq",
+      "title": "How to Configure Avaya Agent for Desktop"
+    },
+    "9": {
+      "doc": "fileSearchStores/onboardingtutorials-1raw4wz3ljj6/documents/how-to-perform-a-local-acco-p5uffgr81oce",
+      "title": "How to perform a Local Account Password Reset from Recovery Mode"
+    },
+    "10": {
+      "doc": "fileSearchStores/onboardingtutorials-1raw4wz3ljj6/documents/how-to-prepare-the-migratio-eeagm81dipih",
+      "title": "How to Prepare the Migration of Important Information Prior to a Wipe or Mac Replacement"
+    }
+  }
+}

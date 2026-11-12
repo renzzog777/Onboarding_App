@@ -2,3 +2,4 @@ Flask==3.0.3
 reportlab==4.2.2
 pyOpenSSL==24.2.1
 gunicorn==22.0.0
+google-genai==2.9.0

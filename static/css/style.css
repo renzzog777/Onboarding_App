@@ -257,6 +257,13 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ---------- Status / feedback ---------- */
 
+.upload-ok {
+    color: var(--pass);
+    font-size: 0.9375rem;
+    line-height: 1.4;
+    font-weight: 600;
+    margin: var(--space-3) 0 0;
+}
 .error {
     color: var(--fail);
     font-size: 0.9375rem;
@@ -325,10 +332,13 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 .home-menu {
     display: flex;
-    gap: var(--space-5);
+    flex-direction: column;
+    gap: var(--space-4);
+    max-width: 36rem;
+    margin-inline: auto;
 }
 .home-tile {
-    flex: 1 1 0;
+    flex: 0 0 auto;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -356,7 +366,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .home-tile-desc { color: var(--muted); font-size: 0.875rem; line-height: 1.4; }
 
 @media (max-width: 520px) {
-    .home-menu { flex-direction: column; gap: var(--space-3); }
+    .home-menu { gap: var(--space-3); }
     .home-tile { padding: var(--space-8) var(--space-5); }
 }
 
@@ -620,6 +630,89 @@ table.history-table td button { margin-top: 0; min-height: 2rem; }
     line-height: 1.4;
     letter-spacing: 0.006em;
     padding: var(--space-5);
+}
+
+/* ---------- Tutorials assistant ---------- */
+
+.visually-hidden {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+.assistant-log {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    max-height: 28rem;
+    overflow-y: auto;
+    margin: var(--space-4) 0;
+    padding: var(--space-4);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+}
+.assistant-msg {
+    max-width: 85%;
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-lg);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
+}
+@starting-style {
+    .assistant-msg { opacity: 0; transform: translateY(4px); }
+}
+.assistant-msg.user {
+    align-self: flex-end;
+    background: var(--primary);
+    color: var(--ink-on-color);
+    border-bottom-right-radius: var(--radius-sm);
+}
+.assistant-msg.bot {
+    align-self: flex-start;
+    background: var(--card-raised);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: var(--radius-sm);
+}
+.assistant-msg.error-msg { color: var(--fail); }
+.assistant-msg .waiting-indicator { margin-top: 0; }
+.assistant-sources {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+    font-size: 0.8125rem;
+    white-space: normal;
+}
+.assistant-chip {
+    display: inline-block;
+    padding: 0.1875rem 0.625rem;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--primary);
+    text-decoration: none;
+    line-height: 1.35;
+}
+.assistant-form {
+    display: flex;
+    gap: var(--space-3);
+    align-items: stretch;
+}
+.assistant-form input { flex: 1; min-width: 0; }
+.assistant-form button { margin-top: 0; }
+@media (hover: hover) and (pointer: fine) {
+    .assistant-chip:hover { border-color: var(--primary); }
+}
+@media (prefers-reduced-motion: reduce) {
+    @starting-style { .assistant-msg { transform: none; } }
 }
 
 /* ---------- Accessibility ---------- */

@@ -124,6 +124,30 @@ environment variable:
 Advisors browse the uploaded PDF guides, each shown with its thumbnail,
 and can download them directly.
 
+### Tutorials assistant (optional)
+An **Ask the assistant** panel on the Tutorials page answers advisors'
+questions using **only** the uploaded PDF guides, with links to the guide
+each answer came from. It uses Gemini API File Search (Google chunks,
+embeds and searches the PDFs, so there's no vector database to run) and is
+adapted from the
+[Chatbot_onboarding](https://github.com/juandpg1205/Chatbot_onboarding)
+proof of concept.
+
+- **Knowledge base = the Tutorials page.** Uploading a PDF in Manage
+  Tutorials indexes it in the background (a minute or two); deleting it
+  removes it from the index. The Manage Tutorials table shows each guide's
+  *Indexed* / *Indexing* status. Guides uploaded before the key was set are
+  indexed at the next app start.
+- **Guardrails** (OWASP Top 10 for LLM Applications): answers only from the
+  documents, refuses other topics and prompt-injection attempts, discards
+  any answer without a citation, renders answers as plain text, English
+  only, and caps usage (500 characters per question, 10 questions per
+  minute per visitor, 800 output tokens, 85 s per question).
+- **Hidden** unless `GEMINI_API_KEY` is set.
+- **Privacy:** on the free tier of the Gemini API, Google may use what you
+  send to improve its products. Only upload guides you're allowed to share
+  outside your organization.
+
 ### Appearance
 A dark, minimalist theme pairing **Fraunces** (serif, for headings) with
 **Inter** (sans, for body/UI), loaded from Google Fonts. A muted brass/gold
@@ -137,6 +161,7 @@ accent color is used throughout rather than a generic bright accent.
 - **Database:** SQLite (no separate database server)
 - **PDF generation:** ReportLab
 - **PDF thumbnails:** `pdftoppm` (poppler-utils)
+- **Tutorials assistant:** Gemini API File Search (`google-genai`)
 - **Frontend:** Server-rendered Jinja2 templates, vanilla JavaScript (no
   framework, no build step), native browser APIs (`getUserMedia`,
   `MediaRecorder`, Web Audio API, Canvas)
@@ -151,6 +176,7 @@ app.py                  Flask routes and request handling
 database.py              SQLite persistence (sessions + tutorial resources)
 pdf_report.py            Builds the PDF report and computes pass/fail
 network_lookup.py        Public-IP owner lookup for the network test (cellular/VPN flags)
+chatbot.py               Tutorials assistant (Gemini File Search) + knowledge base sync
 templates/               Jinja2 HTML pages
 static/css, static/js    Styling and per-test device logic
 reports/                 Generated PDFs, webcam snapshots, voice recordings
@@ -161,7 +187,7 @@ Dockerfile               Production image (Python 3.12-slim + poppler-utils)
 .dockerignore
 docker-compose.yml        App + Caddy (reverse proxy/HTTPS) + Watchtower (auto-updates)
 Caddyfile                 Reverse proxy config for the docker-compose path
-.env.example              Template for the ADMIN_PASSWORD environment variable
+.env.example              Template for the environment variables
 .github/workflows/        GitHub Actions - builds & publishes a Docker image to GHCR
                            (used by the docker-compose path; not required by Dokploy,
                            which builds directly from the Dockerfile in this repo)
@@ -181,6 +207,8 @@ hosting it — see below.
 | Variable | Required | Description |
 |---|---|---|
 | `ADMIN_PASSWORD` | Yes | Gates `/admin/*` (History, Manage Tutorials). Without it, the app falls back to an insecure default (`changeme`) and logs a warning — never leave this unset in production. |
+| `GEMINI_API_KEY` | No | Google AI Studio API key (https://aistudio.google.com → Get API key) for the Tutorials assistant. Leave unset to hide the assistant. |
+| `GEMINI_MODEL` | No | Primary Gemini model (default `gemini-3.5-flash`); fallbacks are listed in `chatbot.py`. Change it if Google renames or retires the model. |
 
 ---
 

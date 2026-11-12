@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Tutorials{% endblock %}
+{% block title %}Tutorials and Chat Bot{% endblock %}
 {% block content %}
 <div class="card">
-    <h1>Tutorials</h1>
+    <h1>Tutorials and Chat Bot</h1>
     <p class="muted">macOS setup guides.</p>
 
     <h2>PDF guides</h2>
@@ -23,4 +23,23 @@
         <p class="muted">No PDF guides uploaded yet.</p>
     {% endif %}
 </div>
+
+{% if assistant_enabled %}
+<div class="card assistant" id="assistant">
+    <h2>Ask the assistant</h2>
+    <p class="muted">Answers come only from the PDF guides above, with links to the guide each answer used. Ask in English.</p>
+    {% if assistant_ready %}
+        <div class="assistant-log" id="assistantLog" aria-live="polite"></div>
+        <form class="assistant-form" id="assistantForm" data-endpoint="{{ url_for('assistant.ask') }}">
+            <label for="assistantQuestion" class="visually-hidden">Your question</label>
+            <input type="text" id="assistantQuestion" maxlength="500" autocomplete="off" required
+                   placeholder="e.g. How do I set up the Mac's Wi-Fi?">
+            <button type="submit" id="assistantSend">Ask</button>
+        </form>
+    {% else %}
+        <p class="muted">The assistant will be available once the guides have been indexed. This takes a minute or two after a guide is uploaded.</p>
+    {% endif %}
+</div>
+<script src="{{ url_for('static', filename='js/tutorials_assistant.js') }}"></script>
+{% endif %}
 {% endblock %}

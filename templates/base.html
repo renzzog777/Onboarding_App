@@ -12,7 +12,7 @@
         <nav>
             <a href="{{ url_for('index') }}">Home</a>
             <a href="{{ url_for('tests_start') }}">Onboarding Tests</a>
-            <a href="{{ url_for('tutorials') }}">Tutorials</a>
+            <a href="{{ url_for('tutorials') }}">Tutorials and Chat Bot</a>
             {% if session.get('is_admin') %}
                 <a href="{{ url_for('history') }}">History</a>
                 <a href="{{ url_for('admin_resources') }}">Manage Tutorials</a>

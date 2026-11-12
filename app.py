@@ -33,6 +33,7 @@ from flask import (
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.utils import secure_filename
 
+import chatbot
 import database as db
 import network_lookup
 import pdf_report
@@ -91,6 +92,8 @@ os.makedirs(SNAPSHOT_DIR, exist_ok=True)
 os.makedirs(RECORDINGS_DIR, exist_ok=True)
 os.makedirs(TUTORIALS_DIR, exist_ok=True)
 os.makedirs(THUMBNAIL_DIR, exist_ok=True)
+
+app.register_blueprint(chatbot.bp)
 
 TEST_ORDER = db.TEST_ORDER  # ["mouse", "keyboard", "headset", "webcam", "network"]
 
@@ -389,7 +392,12 @@ def delete_session(session_id):
 def tutorials():
     resources = db.list_resources()
     pdfs = [r for r in resources if r["resource_type"] == "pdf"]
-    return render_template("tutorials.html", pdfs=pdfs)
+    return render_template(
+        "tutorials.html",
+        pdfs=pdfs,
+        assistant_enabled=chatbot.enabled(),
+        assistant_ready=bool(chatbot.indexed_resource_ids()),
+    )
 
 
 @app.route("/tutorials/<int:resource_id>/download")
@@ -425,42 +433,72 @@ def admin_logout():
 @app.route("/admin/resources")
 @admin_required
 def admin_resources():
-    resources = db.list_resources()
-    return render_template("admin_resources.html", resources=resources)
+    return _render_admin_resources()
+
+
+def _render_admin_resources(error=None):
+    uploaded = request.args.get("uploaded", type=int) if not error else None
+    return render_template(
+        "admin_resources.html",
+        resources=db.list_resources(),
+        error=error,
+        uploaded=uploaded,
+        assistant_enabled=chatbot.enabled(),
+        indexed_ids=chatbot.indexed_resource_ids(),
+    )
 
 
 @app.route("/admin/resources/upload", methods=["POST"])
 @admin_required
 def upload_resource():
-    title = request.form.get("title", "").strip()
     resource_type = "pdf"
-    file = request.files.get("file")
+    files = [f for f in request.files.getlist("file") if f and f.filename]
+    if not files:
+        return _render_admin_resources(error="Choose at least one PDF file to upload.")
 
-    if not title or not file or not file.filename:
-        return render_template(
-            "admin_resources.html",
-            resources=db.list_resources(),
-            error="A title and a PDF file are both required.",
+    # Check every file before saving any, so a bad file never leaves a
+    # half-uploaded batch behind.
+    allowed = ALLOWED_EXTENSIONS[resource_type]
+    rejected = [
+        f.filename for f in files
+        if (f.filename.rsplit(".", 1)[-1].lower() if "." in f.filename else "") not in allowed
+    ]
+    if rejected:
+        names = ", ".join(rejected)
+        return _render_admin_resources(
+            error=f"Only PDF files can be uploaded. Nothing was uploaded; remove: {names}"
         )
 
-    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
-    if ext not in ALLOWED_EXTENSIONS[resource_type]:
-        allowed = ", ".join(sorted(ALLOWED_EXTENSIONS[resource_type]))
-        return render_template(
-            "admin_resources.html",
-            resources=db.list_resources(),
-            error=f"That file type isn't allowed for {resource_type}. Allowed: {allowed}",
-        )
+    # A typed title only makes sense for a single file; with several, each
+    # one is named after its file.
+    typed_title = request.form.get("title", "").strip() if len(files) == 1 else ""
+    for file in files:
+        title = typed_title or _title_from_filename(file.filename)
+        safe_name = secure_filename(file.filename) or "guide.pdf"
+        stored_name = f"{uuid.uuid4().hex[:12]}_{safe_name}"
+        saved_path = os.path.join(TUTORIALS_DIR, stored_name)
+        file.save(saved_path)
+        thumbnail = _generate_thumbnail(saved_path, resource_type, stored_name)
+        db.add_resource(title, resource_type, stored_name, file.filename, thumbnail)
 
-    safe_name = secure_filename(file.filename)
-    stored_name = f"{uuid.uuid4().hex[:12]}_{safe_name}"
-    saved_path = os.path.join(TUTORIALS_DIR, stored_name)
-    file.save(saved_path)
+    chatbot.sync_in_background(TUTORIALS_DIR, log=app.logger.warning)
+    return redirect(url_for("admin_resources", uploaded=len(files)))
 
-    thumbnail = _generate_thumbnail(saved_path, resource_type, stored_name)
 
-    db.add_resource(title, resource_type, stored_name, file.filename, thumbnail)
-    return redirect(url_for("admin_resources"))
+@app.errorhandler(413)
+def upload_too_large(error):
+    message = "That upload is over the 100 MB limit. Upload the PDFs in smaller batches."
+    if request.path == url_for("upload_resource") and session.get("is_admin"):
+        return _render_admin_resources(error=message), 413
+    return message, 413
+
+
+def _title_from_filename(filename):
+    """'Office_WiFi_Setup.pdf' -> 'Office WiFi Setup'. Used when the admin
+    leaves the Title field blank."""
+    name = filename.replace("\\", "/").rsplit("/", 1)[-1]
+    name = os.path.splitext(name)[0].replace("_", " ")
+    return " ".join(name.split()) or "Untitled guide"
 
 
 @app.route("/admin/resources/<int:resource_id>/delete", methods=["POST"])
@@ -476,6 +514,7 @@ def delete_resource(resource_id):
             if os.path.exists(thumb_path):
                 os.remove(thumb_path)
         db.delete_resource(resource_id)
+        chatbot.sync_in_background(TUTORIALS_DIR, log=app.logger.warning)
     return redirect(url_for("admin_resources"))
 
 
@@ -544,6 +583,9 @@ def _backfill_thumbnails():
 
 
 _backfill_thumbnails()
+# Index any tutorials the assistant doesn't know about yet (e.g. uploaded
+# before GEMINI_API_KEY was set, or while Google was unreachable).
+chatbot.sync_in_background(TUTORIALS_DIR, log=app.logger.warning)
 
 
 if __name__ == "__main__":

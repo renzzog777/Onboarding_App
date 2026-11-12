@@ -56,16 +56,16 @@ def test_non_pdf_rejected(admin):
         content_type="multipart/form-data",
     )
     assert r.status_code == 200
-    assert b"Allowed: pdf" in r.data
+    assert b"Only PDF files can be uploaded" in r.data
 
 
-def test_missing_title_error(admin):
+def test_missing_file_error(admin):
     r = admin.post(
         "/admin/resources/upload",
-        data={"title": "", "file": (io.BytesIO(b"x"), "a.pdf")},
+        data={"title": "Some title"},
         content_type="multipart/form-data",
     )
-    assert b"A title and a PDF file are both required." in r.data
+    assert b"Choose at least one PDF file to upload." in r.data
 
 
 def test_pdf_upload_ignores_form_type_and_makes_thumbnail(admin):
