@@ -51,5 +51,41 @@ def test_typed_title_wins(admin):
 
 def test_file_still_required(admin):
     res = admin.post("/admin/resources/upload", data={"title": "x"}, content_type="multipart/form-data")
-    assert "Choose a PDF file" in res.get_data(as_text=True)
+    assert "Choose at least one PDF file" in res.get_data(as_text=True)
+    assert titles() == []
+
+
+def upload_many(client, filenames, title=""):
+    return client.post(
+        "/admin/resources/upload",
+        data={"title": title, "file": [(io.BytesIO(b"%PDF-1.4 fake"), n) for n in filenames]},
+        content_type="multipart/form-data",
+    )
+
+
+def test_multiple_files_each_named_after_file(admin):
+    res = upload_many(admin, ["Mac_Setup.pdf", "Avaya_Login.pdf", "SAP_Access.pdf"])
+    assert res.status_code == 302 and "uploaded=3" in res.headers["Location"]
+    assert sorted(titles()) == ["Avaya Login", "Mac Setup", "SAP Access"]
+    page = admin.get(res.headers["Location"]).get_data(as_text=True)
+    assert "Uploaded 3 guides." in page
+
+
+def test_typed_title_ignored_for_multiple_files(admin):
+    upload_many(admin, ["One.pdf", "Two.pdf"], title="Same title")
+    assert sorted(titles()) == ["One", "Two"]
+
+
+def test_one_bad_file_rejects_whole_batch(admin):
+    res = upload_many(admin, ["Good.pdf", "notes.docx"])
+    assert res.status_code == 200
+    assert "Nothing was uploaded; remove: notes.docx" in res.get_data(as_text=True)
+    assert titles() == []
+
+
+def test_too_large_upload_shows_message(admin, monkeypatch):
+    monkeypatch.setitem(app_module.app.config, "MAX_CONTENT_LENGTH", 10)
+    res = upload_many(admin, ["Big.pdf"])
+    assert res.status_code == 413
+    assert "over the 100 MB limit" in res.get_data(as_text=True)
     assert titles() == []

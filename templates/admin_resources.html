@@ -6,13 +6,15 @@
     <p class="muted">Upload macOS setup PDFs for advisors to download from the public Tutorials page.</p>
 
     <form method="POST" action="{{ url_for('upload_resource') }}" enctype="multipart/form-data">
-        <label for="title">Title <span class="muted">(optional)</span></label>
+        <label for="file">PDF files</label>
+        <input type="file" id="file" name="file" accept=".pdf,application/pdf" multiple required>
+        <p class="muted hint">Select one or more PDFs. Each guide is named after its file (Office_WiFi_Setup.pdf becomes "Office WiFi Setup"). Up to 100 MB per upload.</p>
+
+        <label for="title">Title <span class="muted">(optional, single file only)</span></label>
         <input type="text" id="title" name="title" placeholder="Leave blank to use the file name">
 
-        <label for="file">PDF file</label>
-        <input type="file" id="file" name="file" accept=".pdf,application/pdf" required>
-
         {% if error %}<p class="error">{{ error }}</p>{% endif %}
+        {% if uploaded %}<p class="upload-ok">Uploaded {{ uploaded }} guide{{ '' if uploaded == 1 else 's' }}.{% if assistant_enabled %} The assistant will be able to use {{ 'it' if uploaded == 1 else 'them' }} once {{ 'it shows' if uploaded == 1 else 'they show' }} Indexed below.{% endif %}</p>{% endif %}
 
         <button type="submit">Upload</button>
     </form>

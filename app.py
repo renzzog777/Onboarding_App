@@ -437,10 +437,12 @@ def admin_resources():
 
 
 def _render_admin_resources(error=None):
+    uploaded = request.args.get("uploaded", type=int) if not error else None
     return render_template(
         "admin_resources.html",
         resources=db.list_resources(),
         error=error,
+        uploaded=uploaded,
         assistant_enabled=chatbot.enabled(),
         indexed_ids=chatbot.indexed_resource_ids(),
     )
@@ -449,32 +451,46 @@ def _render_admin_resources(error=None):
 @app.route("/admin/resources/upload", methods=["POST"])
 @admin_required
 def upload_resource():
-    title = request.form.get("title", "").strip()
     resource_type = "pdf"
-    file = request.files.get("file")
+    files = [f for f in request.files.getlist("file") if f and f.filename]
+    if not files:
+        return _render_admin_resources(error="Choose at least one PDF file to upload.")
 
-    if not file or not file.filename:
-        return _render_admin_resources(error="Choose a PDF file to upload.")
-    if not title:
-        title = _title_from_filename(file.filename)
-
-    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
-    if ext not in ALLOWED_EXTENSIONS[resource_type]:
-        allowed = ", ".join(sorted(ALLOWED_EXTENSIONS[resource_type]))
+    # Check every file before saving any, so a bad file never leaves a
+    # half-uploaded batch behind.
+    allowed = ALLOWED_EXTENSIONS[resource_type]
+    rejected = [
+        f.filename for f in files
+        if (f.filename.rsplit(".", 1)[-1].lower() if "." in f.filename else "") not in allowed
+    ]
+    if rejected:
+        names = ", ".join(rejected)
         return _render_admin_resources(
-            error=f"That file type isn't allowed for {resource_type}. Allowed: {allowed}"
+            error=f"Only PDF files can be uploaded. Nothing was uploaded; remove: {names}"
         )
 
-    safe_name = secure_filename(file.filename)
-    stored_name = f"{uuid.uuid4().hex[:12]}_{safe_name}"
-    saved_path = os.path.join(TUTORIALS_DIR, stored_name)
-    file.save(saved_path)
+    # A typed title only makes sense for a single file; with several, each
+    # one is named after its file.
+    typed_title = request.form.get("title", "").strip() if len(files) == 1 else ""
+    for file in files:
+        title = typed_title or _title_from_filename(file.filename)
+        safe_name = secure_filename(file.filename) or "guide.pdf"
+        stored_name = f"{uuid.uuid4().hex[:12]}_{safe_name}"
+        saved_path = os.path.join(TUTORIALS_DIR, stored_name)
+        file.save(saved_path)
+        thumbnail = _generate_thumbnail(saved_path, resource_type, stored_name)
+        db.add_resource(title, resource_type, stored_name, file.filename, thumbnail)
 
-    thumbnail = _generate_thumbnail(saved_path, resource_type, stored_name)
-
-    db.add_resource(title, resource_type, stored_name, file.filename, thumbnail)
     chatbot.sync_in_background(TUTORIALS_DIR, log=app.logger.warning)
-    return redirect(url_for("admin_resources"))
+    return redirect(url_for("admin_resources", uploaded=len(files)))
+
+
+@app.errorhandler(413)
+def upload_too_large(error):
+    message = "That upload is over the 100 MB limit. Upload the PDFs in smaller batches."
+    if request.path == url_for("upload_resource") and session.get("is_admin"):
+        return _render_admin_resources(error=message), 413
+    return message, 413
 
 
 def _title_from_filename(filename):

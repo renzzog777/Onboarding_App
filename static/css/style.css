@@ -257,6 +257,13 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ---------- Status / feedback ---------- */
 
+.upload-ok {
+    color: var(--pass);
+    font-size: 0.9375rem;
+    line-height: 1.4;
+    font-weight: 600;
+    margin: var(--space-3) 0 0;
+}
 .error {
     color: var(--fail);
     font-size: 0.9375rem;
