@@ -147,6 +147,68 @@ b, strong { font-weight: 600; }
     line-height: var(--tap-target);
     transition: color var(--dur-fast) ease;
 }
+.topbar nav { align-items: center; }
+.topbar nav a.active { color: var(--primary); }
+
+/* Admin dropdown: a thin divider sets it apart from the public links. */
+.nav-divider {
+    width: 1px;
+    height: 1.25rem;
+    background: var(--border);
+}
+.nav-menu { position: relative; }
+.nav-menu summary {
+    list-style: none;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    line-height: var(--tap-target);
+    transition: color var(--dur-fast) ease;
+    user-select: none;
+}
+.nav-menu summary::-webkit-details-marker { display: none; }
+.nav-menu summary::after {
+    content: "";
+    display: inline-block;
+    margin-left: var(--space-2);
+    width: 0.4em;
+    height: 0.4em;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: translateY(-0.2em) rotate(45deg);
+    transition: transform var(--dur-fast) var(--ease-out);
+}
+.nav-menu[open] summary::after { transform: translateY(0.05em) rotate(-135deg); }
+.nav-menu summary.active,
+.nav-menu[open] summary { color: var(--primary); }
+.nav-menu summary:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: var(--radius-sm); }
+.nav-menu-panel {
+    position: absolute;
+    right: 0;
+    top: calc(100% + var(--space-1));
+    z-index: 50;
+    min-width: 12rem;
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-1);
+    background: var(--card-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+.topbar nav .nav-menu-panel a {
+    color: var(--text);
+    line-height: 1.3;
+    padding: var(--space-3) var(--space-3);
+    border-radius: var(--radius-sm);
+}
+.topbar nav .nav-menu-panel a:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.nav-menu-panel hr {
+    border: 0;
+    border-top: 1px solid var(--border);
+    margin: var(--space-1) 0;
+}
 
 .container {
     max-width: 60rem;
@@ -166,7 +228,10 @@ b, strong { font-weight: 600; }
 .card-center p { margin-inline: auto; }
 
 @media (max-width: 520px) {
-    .topbar { padding: var(--space-3) var(--space-4); }
+    .topbar { padding: var(--space-3) var(--space-4); position: relative; }
+    /* Nav wraps on phones: span the menu under the whole bar so it never runs off-screen. */
+    .nav-menu { position: static; }
+    .nav-menu-panel { left: var(--space-4); right: var(--space-4); top: calc(100% - var(--space-2)); }
     .container { margin-top: var(--space-5); padding: 0 var(--space-4) var(--space-10); }
     .card { padding: var(--space-5); }
 }
@@ -373,6 +438,8 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 /* Hover only where a real pointer can hover (touch fires hover on tap). */
 @media (hover: hover) and (pointer: fine) {
     .topbar nav a:hover { color: var(--primary); }
+    .nav-menu summary:hover { color: var(--primary); }
+    .topbar nav .nav-menu-panel a:hover { background: var(--card-hover); color: var(--text); }
     button:hover:not(:disabled), .btn:hover { background: var(--primary-dark); }
     button.secondary:hover:not(:disabled), .btn.secondary:hover { background: var(--card-hover); }
     .home-tile:hover { border-color: var(--primary); transform: translateY(-2px); }
