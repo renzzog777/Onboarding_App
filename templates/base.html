@@ -13,12 +13,20 @@
             <a href="{{ url_for('index') }}">Home</a>
             <a href="{{ url_for('tests_start') }}">Onboarding Tests</a>
             <a href="{{ url_for('tutorials') }}">Tutorials and Chat Bot</a>
+            <span class="nav-divider" aria-hidden="true"></span>
+            {% set on_admin_page = request.path.startswith('/admin') or request.path.startswith('/history') %}
             {% if session.get('is_admin') %}
-                <a href="{{ url_for('history') }}">History</a>
-                <a href="{{ url_for('admin_resources') }}">Manage Tutorials</a>
-                <a href="{{ url_for('admin_logout') }}">Log Out</a>
+                <details class="nav-menu">
+                    <summary class="{{ 'active' if on_admin_page }}">Admin</summary>
+                    <div class="nav-menu-panel">
+                        <a href="{{ url_for('history') }}">History</a>
+                        <a href="{{ url_for('admin_resources') }}">Manage Tutorials</a>
+                        <hr>
+                        <a href="{{ url_for('admin_logout') }}">Log Out</a>
+                    </div>
+                </details>
             {% else %}
-                <a href="{{ url_for('admin_login') }}">Admin</a>
+                <a href="{{ url_for('admin_login') }}" class="{{ 'active' if on_admin_page }}">Admin</a>
             {% endif %}
         </nav>
     </header>
