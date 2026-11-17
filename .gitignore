@@ -18,3 +18,5 @@ uploads/tutorials/thumbnails/*
 data/kb/
 data/chatbot_*.json
 data/chatbot_*.lock
+data/*.db-shm
+data/*.db-wal
