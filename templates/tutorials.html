@@ -27,15 +27,16 @@
 {% if assistant_enabled %}
 <div class="card assistant" id="assistant">
     <h2>Ask the assistant</h2>
-    <p class="muted">Answers come only from the PDF guides above, with links to the guide each answer used. Ask in English.</p>
+    <p class="muted">Answers come only from the PDF guides above, with links to the guide and section each answer used. It remembers your last two questions, so you can ask follow-ups. Ask in English.</p>
     {% if assistant_ready %}
         <div class="assistant-log" id="assistantLog" aria-live="polite"></div>
         <form class="assistant-form" id="assistantForm" data-endpoint="{{ url_for('assistant.ask') }}">
             <label for="assistantQuestion" class="visually-hidden">Your question</label>
             <input type="text" id="assistantQuestion" maxlength="500" autocomplete="off" required
-                   placeholder="e.g. How do I set up the Mac's Wi-Fi?">
+                   placeholder="e.g. How do I start the Mac in Safe Mode?">
             <button type="submit" id="assistantSend">Ask</button>
         </form>
+        <button type="button" class="secondary small-btn" id="assistantClear" hidden>New conversation</button>
     {% else %}
         <p class="muted">The assistant will be available once the guides have been indexed. This takes a minute or two after a guide is uploaded.</p>
     {% endif %}

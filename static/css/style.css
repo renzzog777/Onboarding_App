@@ -879,3 +879,4 @@ textarea.markdown-editor {
     border-radius: 8px;
     overflow-x: auto;
 }
+#assistantClear { margin-top: var(--space-2); }

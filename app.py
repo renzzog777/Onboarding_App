@@ -402,7 +402,7 @@ def tutorials():
         "tutorials.html",
         pdfs=pdfs,
         assistant_enabled=chatbot.enabled(),
-        assistant_ready=bool(chatbot.indexed_resource_ids()),
+        assistant_ready=chatbot.ready(),
     )
 
 
@@ -524,7 +524,6 @@ def upload_resource():
 
     if saved:
         kb_worker.spawn()
-        chatbot.sync_in_background(TUTORIALS_DIR, log=app.logger.warning)
     return redirect(url_for("admin_resources", uploaded=saved))
 
 
@@ -559,7 +558,6 @@ def delete_resource(resource_id):
         db.delete_resource(resource_id)
         # PDF, Markdown, chunks and vectors go together.
         kb_store.delete_document(resource_id)
-        chatbot.sync_in_background(TUTORIALS_DIR, log=app.logger.warning)
     return redirect(url_for("admin_resources"))
 
 
@@ -746,9 +744,6 @@ _backfill_sha256()
 # Resume knowledge base jobs interrupted by a restart (new guides are
 # queued on upload; existing ones are indexed with `python -m kb reindex-all`).
 kb_worker.startup()
-# Index any tutorials the assistant doesn't know about yet (e.g. uploaded
-# before GEMINI_API_KEY was set, or while Google was unreachable).
-chatbot.sync_in_background(TUTORIALS_DIR, log=app.logger.warning)
 
 
 if __name__ == "__main__":

@@ -38,7 +38,10 @@ DEFAULTS = {
     "LLM_BASE_URL": "http://127.0.0.1:11434/v1",
     "LLM_MODEL": "qwen3.5:2b",
     "LLM_REASONING_EFFORT": "none",
-    "LLM_TIMEOUT": "90",  # seconds to first token / between streamed tokens
+    # Seconds to first token / between tokens. A question queued behind
+    # another one in Ollama can wait over a minute (chatbot.py keeps the
+    # browser connection alive meanwhile).
+    "LLM_TIMEOUT": "150",
     "LLM_MAX_TOKENS": "600",
     "LLM_TEMPERATURE": "0.2",
     "EMBED_MODEL": "qwen3-embedding:0.6b",

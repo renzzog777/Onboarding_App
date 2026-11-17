@@ -120,7 +120,7 @@ def test_ollama_timeout_is_reported(monkeypatch):
         raise httpx.ReadTimeout("slow", request=req)
 
     fake_openai(monkeypatch, slow)
-    with pytest.raises(llm.LLMUnavailable, match="did not answer within 90 s"):
+    with pytest.raises(llm.LLMUnavailable, match="did not answer within 150 s"):
         llm.chat(MSGS, stream=False)
 
 

@@ -2,9 +2,7 @@
 replace / delete / edit flows, and the CLI. Embeddings are faked with a
 bag-of-words hash so retrieval is meaningful without Ollama; PDFs are
 generated with PyMuPDF."""
-import hashlib
 import io
-import math
 import os
 import re
 
@@ -15,22 +13,7 @@ import app as app_module
 import database as db
 from ai import llm
 from kb import chunk, config, convert, store, worker
-
-DIM = 512
-STOP = set("a an and the in of to on or how do i is it my with your for".split())
-
-
-def fake_embed(texts, *, query=False):
-    out = []
-    for t in texts:
-        v = [0.0] * DIM
-        for w in re.findall(r"[a-z0-9]+", t.lower()):
-            if w in STOP:
-                continue
-            v[int(hashlib.md5(w.encode()).hexdigest(), 16) % DIM] += 1.0
-        n = math.sqrt(sum(x * x for x in v)) or 1.0
-        out.append([x / n for x in v])
-    return out
+from kb_fakes import fake_embed
 
 
 @pytest.fixture(autouse=True)
@@ -145,6 +128,11 @@ def test_label_headings_are_not_section_names():
     md = "# MACOS · ADVISOR'S EDITION\n\n## Erase the Mac\n\nOpen Settings.\n"
     assert chunk.sections(md, "Quick Wipe")[1][0] == "Erase the Mac"
     assert chunk.sections("# MACOS LABEL\n\ntext\n", "Quick Wipe")[0][0] == "Quick Wipe"
+
+
+def test_section_path_keeps_last_two_levels():
+    md = "## Part one\n\n### Set up\n\n#### Enter password\n\ntext\n"
+    assert chunk.sections(md, "T")[-1][0] == "Set up › Enter password"
 
 
 def test_long_section_is_windowed():

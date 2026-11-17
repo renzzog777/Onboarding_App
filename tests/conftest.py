@@ -38,7 +38,5 @@ for d in (app.SNAPSHOT_DIR, app.RECORDINGS_DIR, app.THUMBNAIL_DIR):
 import chatbot  # noqa: E402
 
 chatbot.DATA_DIR = os.path.join(_TMP, "data")
-chatbot.STORE_FILE = os.path.join(chatbot.DATA_DIR, "chatbot_store.json")
-chatbot.LOCK_FILE = os.path.join(chatbot.DATA_DIR, "chatbot_sync.lock")
 chatbot.RATE_DB = os.path.join(chatbot.DATA_DIR, "chatbot_ratelimit.db")
 os.makedirs(chatbot.DATA_DIR, exist_ok=True)

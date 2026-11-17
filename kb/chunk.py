@@ -55,7 +55,9 @@ def sections(md, title=""):
                 # ("MACOS · ADVISOR'S EDITION") - they make poor citations
                 if not (lvl == 1 and _norm(t) == _norm(title)) and re.search(r"[a-z]", t)
             ]
-            path = PATH_SEP.join(parts) or title or text
+            # The slides' heading levels are not always nested correctly, so
+            # long paths read badly in citations: keep the last two levels.
+            path = PATH_SEP.join(parts[-2:]) or title or text
             lines = [line]
         else:
             lines.append(line)

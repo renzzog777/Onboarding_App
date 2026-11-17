@@ -16,3 +16,5 @@ uploads/tutorials/*
 uploads/tutorials/thumbnails/*
 !uploads/tutorials/thumbnails/.gitkeep
 data/kb/
+data/chatbot_*.json
+data/chatbot_*.lock
