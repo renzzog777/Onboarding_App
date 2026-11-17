@@ -13,6 +13,7 @@ Flow:
   /history        -> searchable list of past sessions
 """
 import base64
+import hashlib
 import os
 import secrets
 import subprocess
@@ -22,6 +23,7 @@ from functools import wraps
 from flask import (
     Flask,
     abort,
+    flash,
     jsonify,
     redirect,
     render_template,
@@ -37,11 +39,15 @@ import chatbot
 import database as db
 import network_lookup
 import pdf_report
+from kb import config as kb_config
+from kb import store as kb_store
+from kb import worker as kb_worker
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SNAPSHOT_DIR = os.path.join(BASE_DIR, "reports", "snapshots")
 RECORDINGS_DIR = os.path.join(BASE_DIR, "reports", "recordings")
-TUTORIALS_DIR = os.path.join(BASE_DIR, "uploads", "tutorials")
+# Same folder the knowledge base worker reads (KB_TUTORIALS_DIR overrides it).
+TUTORIALS_DIR = kb_config.TUTORIALS_DIR
 THUMBNAIL_DIR = os.path.join(TUTORIALS_DIR, "thumbnails")
 SECRET_KEY_FILE = os.path.join(BASE_DIR, "data", ".flask_secret")
 
@@ -443,9 +449,31 @@ def _render_admin_resources(error=None):
         resources=db.list_resources(),
         error=error,
         uploaded=uploaded,
-        assistant_enabled=chatbot.enabled(),
-        indexed_ids=chatbot.indexed_resource_ids(),
+        kb_docs=_kb_docs(),
     )
+
+
+def _kb_docs():
+    """Knowledge base status per guide; the admin page must still load if
+    kb.db can't be opened."""
+    try:
+        return kb_store.all_documents()
+    except Exception as exc:
+        app.logger.warning("Knowledge base status unavailable: %s", exc)
+        return {}
+
+
+def _sha256_upload(file):
+    h = hashlib.sha256()
+    for block in iter(lambda: file.stream.read(1 << 20), b""):
+        h.update(block)
+    file.stream.seek(0)
+    return h.hexdigest()
+
+
+def _is_pdf_name(filename):
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    return ext in ALLOWED_EXTENSIONS["pdf"]
 
 
 @app.route("/admin/resources/upload", methods=["POST"])
@@ -472,17 +500,32 @@ def upload_resource():
     # A typed title only makes sense for a single file; with several, each
     # one is named after its file.
     typed_title = request.form.get("title", "").strip() if len(files) == 1 else ""
+    saved = 0
+    seen = {}
     for file in files:
+        # Same bytes as a guide we already have (or earlier in this batch):
+        # skip it instead of creating a duplicate download + duplicate chunks.
+        sha = _sha256_upload(file)
+        existing = db.find_resource_by_sha256(sha)
+        if existing or sha in seen:
+            same_as = existing["title"] if existing else seen[sha]
+            flash(f"Skipped {file.filename}: it is already uploaded as “{same_as}”.")
+            continue
         title = typed_title or _title_from_filename(file.filename)
+        seen[sha] = title
         safe_name = secure_filename(file.filename) or "guide.pdf"
         stored_name = f"{uuid.uuid4().hex[:12]}_{safe_name}"
         saved_path = os.path.join(TUTORIALS_DIR, stored_name)
         file.save(saved_path)
         thumbnail = _generate_thumbnail(saved_path, resource_type, stored_name)
-        db.add_resource(title, resource_type, stored_name, file.filename, thumbnail)
+        rid = db.add_resource(title, resource_type, stored_name, file.filename, thumbnail, sha)
+        kb_store.enqueue(rid, sha)
+        saved += 1
 
-    chatbot.sync_in_background(TUTORIALS_DIR, log=app.logger.warning)
-    return redirect(url_for("admin_resources", uploaded=len(files)))
+    if saved:
+        kb_worker.spawn()
+        chatbot.sync_in_background(TUTORIALS_DIR, log=app.logger.warning)
+    return redirect(url_for("admin_resources", uploaded=saved))
 
 
 @app.errorhandler(413)
@@ -514,8 +557,114 @@ def delete_resource(resource_id):
             if os.path.exists(thumb_path):
                 os.remove(thumb_path)
         db.delete_resource(resource_id)
+        # PDF, Markdown, chunks and vectors go together.
+        kb_store.delete_document(resource_id)
         chatbot.sync_in_background(TUTORIALS_DIR, log=app.logger.warning)
     return redirect(url_for("admin_resources"))
+
+
+def _require_resource(resource_id):
+    resource = db.get_resource(resource_id)
+    if not resource or resource["resource_type"] != "pdf":
+        abort(404, description="Guide not found.")
+    return resource
+
+
+@app.route("/admin/resources/<int:resource_id>/replace", methods=["POST"])
+@admin_required
+def replace_resource(resource_id):
+    """Upload a new version of a guide: same id (download link), new PDF,
+    old Markdown edits discarded, chunks rebuilt."""
+    resource = _require_resource(resource_id)
+    file = request.files.get("file")
+    if not file or not file.filename:
+        return _render_admin_resources(error="Choose the new PDF for the guide you want to replace.")
+    if not _is_pdf_name(file.filename):
+        return _render_admin_resources(error=f"Only PDF files can be uploaded ({file.filename}).")
+    sha = _sha256_upload(file)
+    if sha == resource["sha256"]:
+        flash(f"“{resource['title']}” already has exactly this PDF; nothing to replace.")
+        return redirect(url_for("admin_resources"))
+    other = db.find_resource_by_sha256(sha)
+    if other:
+        return _render_admin_resources(
+            error=f"That PDF is already uploaded as “{other['title']}”."
+        )
+
+    safe_name = secure_filename(file.filename) or "guide.pdf"
+    stored_name = f"{uuid.uuid4().hex[:12]}_{safe_name}"
+    saved_path = os.path.join(TUTORIALS_DIR, stored_name)
+    file.save(saved_path)
+    thumbnail = _generate_thumbnail(saved_path, "pdf", stored_name)
+    title = request.form.get("title", "").strip() or None
+    db.replace_resource_file(resource_id, stored_name, file.filename, sha, thumbnail, title)
+
+    old_pdf = os.path.join(TUTORIALS_DIR, resource["filename"])
+    old_thumb = os.path.join(THUMBNAIL_DIR, resource["thumbnail"]) if resource["thumbnail"] else None
+    for path in (old_pdf, old_thumb):
+        if path and os.path.exists(path):
+            os.remove(path)
+
+    kb_worker.enqueue_and_spawn(resource_id, sha, keep_edits=False)
+    flash(f"Replaced the PDF of “{title or resource['title']}”. It is being re-indexed.")
+    return redirect(url_for("admin_resources"))
+
+
+@app.route("/admin/resources/<int:resource_id>/reindex", methods=["POST"])
+@admin_required
+def reindex_resource(resource_id):
+    """Index / Retry button, and "re-convert from PDF" in the Markdown
+    editor (from_pdf=1 discards edited Markdown)."""
+    resource = _require_resource(resource_id)
+    from_pdf = request.form.get("from_pdf") == "1"
+    kb_worker.enqueue_and_spawn(resource_id, resource["sha256"], keep_edits=not from_pdf)
+    flash(f"“{resource['title']}” is queued for indexing.")
+    target = request.form.get("next")
+    if target == "markdown":
+        return redirect(url_for("edit_markdown", resource_id=resource_id))
+    return redirect(url_for("admin_resources"))
+
+
+@app.route("/admin/resources/<int:resource_id>/markdown", methods=["GET", "POST"])
+@admin_required
+def edit_markdown(resource_id):
+    """View / edit the Markdown the assistant uses for a guide. Saving
+    re-chunks and re-embeds it; the edit is kept until the PDF is replaced
+    or re-converted."""
+    resource = _require_resource(resource_id)
+    error = None
+    if request.method == "POST":
+        text = request.form.get("markdown", "").replace("\r\n", "\n")
+        if not text.strip():
+            error = "The Markdown is empty. To start over from the PDF, use Re-convert from PDF."
+        elif len(text.encode("utf-8")) > kb_config.MAX_MARKDOWN_BYTES:
+            error = "The Markdown is over 1 MB."
+        else:
+            kb_store.save_edited_markdown(resource_id, text.rstrip() + "\n", resource["sha256"])
+            kb_worker.spawn()
+            flash("Saved. The guide is being re-indexed with your Markdown.")
+            return redirect(url_for("edit_markdown", resource_id=resource_id))
+    markdown = request.form.get("markdown") if error else kb_store.read_markdown(resource_id)
+    return render_template(
+        "admin_markdown.html",
+        resource=resource,
+        doc=kb_store.get(resource_id),
+        markdown=markdown,
+        chunks=kb_store.chunks_for(resource_id),
+        error=error,
+    )
+
+
+@app.route("/admin/resources/kb-status")
+@admin_required
+def kb_status():
+    """Polled by the Manage Tutorials page while guides are being indexed."""
+    return jsonify(
+        {
+            str(rid): {"status": d["status"], "chunks": d["chunks"], "error": d["error"]}
+            for rid, d in _kb_docs().items()
+        }
+    )
 
 
 @app.route("/tutorials/<int:resource_id>/thumbnail")
@@ -582,7 +731,21 @@ def _backfill_thumbnails():
             db.set_resource_thumbnail(resource["id"], thumbnail)
 
 
+def _backfill_sha256():
+    """Fingerprint guides uploaded before duplicate detection existed."""
+    for resource in db.list_resources():
+        if resource["sha256"]:
+            continue
+        path = os.path.join(TUTORIALS_DIR, resource["filename"])
+        if os.path.exists(path):
+            db.set_resource_sha256(resource["id"], kb_worker.sha256_file(path))
+
+
 _backfill_thumbnails()
+_backfill_sha256()
+# Resume knowledge base jobs interrupted by a restart (new guides are
+# queued on upload; existing ones are indexed with `python -m kb reindex-all`).
+kb_worker.startup()
 # Index any tutorials the assistant doesn't know about yet (e.g. uploaded
 # before GEMINI_API_KEY was set, or while Google was unreachable).
 chatbot.sync_in_background(TUTORIALS_DIR, log=app.logger.warning)

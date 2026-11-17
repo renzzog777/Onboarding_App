@@ -15,3 +15,4 @@ uploads/tutorials/*
 !uploads/tutorials/thumbnails/
 uploads/tutorials/thumbnails/*
 !uploads/tutorials/thumbnails/.gitkeep
+data/kb/

@@ -8,6 +8,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
 _TMP = tempfile.mkdtemp(prefix="onboarding-tests-")
+# Knowledge base paths are read from the environment at import time.
+os.environ["KB_DATA_DIR"] = os.path.join(_TMP, "data")
+os.environ["KB_TUTORIALS_DIR"] = os.path.join(_TMP, "uploads", "tutorials")
 
 import database  # noqa: E402
 
@@ -16,6 +19,12 @@ database.DB_PATH = os.path.join(_TMP, "tests.db")
 import pdf_report  # noqa: E402
 
 pdf_report.REPORTS_DIR = os.path.join(_TMP, "reports")
+
+from kb import worker as kb_worker  # noqa: E402
+
+# Never start the real background process from tests; tests that need
+# indexing call kb_worker.run_pending() in-process.
+kb_worker.spawn = lambda: None
 
 import app  # noqa: E402
 

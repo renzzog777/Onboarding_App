@@ -204,9 +204,14 @@ def test_sync_uploads_new_and_deletes_removed(monkeypatch):
 
 
 def test_admin_page_shows_index_status(client, monkeypatch):
-    enable(monkeypatch)
-    index_as(add_tutorial())
+    # The Assistant column now shows the local knowledge base status
+    # (kb/ - see tests/test_kb.py), not the Gemini File Search store.
+    from kb import store
+
+    rid = add_tutorial()
     with client.session_transaction() as s:
         s["is_admin"] = True
-    html = client.get("/admin/resources").get_data(as_text=True)
-    assert "Indexed" in html
+    assert "Not indexed" in client.get("/admin/resources").get_data(as_text=True)
+    store.enqueue(rid)
+    store.set_status(rid, store.INDEXED, chunks=3)
+    assert "Indexed" in client.get("/admin/resources").get_data(as_text=True)

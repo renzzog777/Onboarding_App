@@ -9,7 +9,9 @@ import os
 from datetime import datetime, timezone
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "data", "tests.db")
+# APP_DB_PATH lets the knowledge base worker process (kb/worker.py) open
+# the same database the web app uses (tests point it at a temp file).
+DB_PATH = os.environ.get("APP_DB_PATH") or os.path.join(BASE_DIR, "data", "tests.db")
 
 TEST_ORDER = ["mouse", "keyboard", "headset", "webcam", "network"]
 
@@ -61,10 +63,11 @@ def init_db():
     # column existed - CREATE TABLE IF NOT EXISTS above won't add it to an
     # already-existing table, so add it here and ignore the error if it's
     # already present.
-    try:
-        conn.execute("ALTER TABLE resources ADD COLUMN thumbnail TEXT")
-    except sqlite3.OperationalError:
-        pass
+    for column in ("thumbnail", "sha256"):
+        try:
+            conn.execute(f"ALTER TABLE resources ADD COLUMN {column} TEXT")
+        except sqlite3.OperationalError:
+            pass
     # Same lightweight migration pattern for sessions created before the
     # network_type/client_ip columns existed.
     for column in ("network_type", "client_ip", "network_raw_info", "network_result"):
@@ -159,14 +162,14 @@ def delete_session(session_id):
 # --- Tutorial resources (admin-uploaded PDFs) ---
 
 
-def add_resource(title, resource_type, filename, original_filename, thumbnail=None):
+def add_resource(title, resource_type, filename, original_filename, thumbnail=None, sha256=None):
     conn = get_conn()
     cur = conn.execute(
         """
-        INSERT INTO resources (title, resource_type, filename, original_filename, uploaded_at, thumbnail)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO resources (title, resource_type, filename, original_filename, uploaded_at, thumbnail, sha256)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
-        (title, resource_type, filename, original_filename, _now(), thumbnail),
+        (title, resource_type, filename, original_filename, _now(), thumbnail, sha256),
     )
     conn.commit()
     resource_id = cur.lastrowid
@@ -191,6 +194,37 @@ def get_resource(resource_id):
 def set_resource_thumbnail(resource_id, thumbnail):
     conn = get_conn()
     conn.execute("UPDATE resources SET thumbnail = ? WHERE id = ?", (thumbnail, resource_id))
+    conn.commit()
+    conn.close()
+
+
+def find_resource_by_sha256(sha256):
+    conn = get_conn()
+    row = conn.execute("SELECT * FROM resources WHERE sha256 = ?", (sha256,)).fetchone()
+    conn.close()
+    return row
+
+
+def set_resource_sha256(resource_id, sha256):
+    conn = get_conn()
+    conn.execute("UPDATE resources SET sha256 = ? WHERE id = ?", (sha256, resource_id))
+    conn.commit()
+    conn.close()
+
+
+def replace_resource_file(resource_id, filename, original_filename, sha256, thumbnail, title=None):
+    """Point an existing guide at a new PDF (Replace): same id, so its
+    download link stays the same."""
+    conn = get_conn()
+    conn.execute(
+        """
+        UPDATE resources
+        SET filename = ?, original_filename = ?, sha256 = ?, thumbnail = ?,
+            uploaded_at = ?, title = COALESCE(?, title)
+        WHERE id = ?
+        """,
+        (filename, original_filename, sha256, thumbnail, _now(), title, resource_id),
+    )
     conn.commit()
     conn.close()
 

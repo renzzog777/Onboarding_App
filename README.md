@@ -120,6 +120,28 @@ environment variable:
   (poppler-utils). Generation is best-effort — a failed thumbnail never
   blocks the upload, it just falls back to a text placeholder.
 
+### Knowledge base for the assistant (local)
+Every PDF uploaded in **Manage Tutorials** is also converted to Markdown
+(`pymupdf4llm`, no OCR), split by headings into ~300-400 word chunks,
+embedded with `EMBED_MODEL` on the local Ollama server and stored in
+`data/kb.db` (SQLite + `sqlite-vec`). The PDF itself is stored and
+downloaded exactly as before.
+
+- **Background job:** the upload returns at once; a short-lived
+  `python -m kb worker` process (one at a time, file lock) does the work.
+  The **Assistant** column shows Pending → Processing → Indexed (or
+  Failed / Needs OCR, hover for the reason, with a Retry button).
+- **Duplicates:** a PDF identical to one already uploaded is skipped.
+- **Replace:** uploads a new version of a guide, keeping its download link;
+  its Markdown and chunks are rebuilt.
+- **Delete:** removes the PDF, its Markdown, chunks and vectors together.
+- **Markdown editor:** *Markdown* on each row shows the text the assistant
+  reads and its chunks; edit and save to re-index (kept until the PDF is
+  replaced or re-converted). For a scanned PDF you can paste its text here.
+- **CLI** (from the app folder, with the app's environment loaded):
+  `venv/bin/python -m kb reindex-all` (`--only-missing`, `--force`) and
+  `venv/bin/python -m kb status`. Worker log: `data/kb/worker.log`.
+
 ### Public Tutorials page
 Advisors browse the uploaded PDF guides, each shown with its thumbnail,
 and can download them directly.
@@ -178,6 +200,7 @@ pdf_report.py            Builds the PDF report and computes pass/fail
 network_lookup.py        Public-IP owner lookup for the network test (cellular/VPN flags)
 chatbot.py               Tutorials assistant (Gemini File Search) + knowledge base sync
 ai/llm.py                LLM client: chat() + embed(), Ollama or Gemini via LLM_PROVIDER
+kb/                      Local knowledge base: PDF -> Markdown -> chunks -> vectors (data/kb.db)
 templates/               Jinja2 HTML pages
 static/css, static/js    Styling and per-test device logic
 reports/                 Generated PDFs, webcam snapshots, voice recordings

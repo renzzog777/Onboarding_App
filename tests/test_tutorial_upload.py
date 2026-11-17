@@ -22,7 +22,7 @@ def admin(monkeypatch):
 def upload(client, filename, title=""):
     return client.post(
         "/admin/resources/upload",
-        data={"title": title, "file": (io.BytesIO(b"%PDF-1.4 fake"), filename)},
+        data={"title": title, "file": (io.BytesIO(b"%PDF-1.4 fake " + filename.encode()), filename)},
         content_type="multipart/form-data",
     )
 
@@ -58,7 +58,8 @@ def test_file_still_required(admin):
 def upload_many(client, filenames, title=""):
     return client.post(
         "/admin/resources/upload",
-        data={"title": title, "file": [(io.BytesIO(b"%PDF-1.4 fake"), n) for n in filenames]},
+        # Distinct bytes per file: identical files are skipped as duplicates.
+        data={"title": title, "file": [(io.BytesIO(b"%PDF-1.4 fake " + n.encode()), n) for n in filenames]},
         content_type="multipart/form-data",
     )
 
