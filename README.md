@@ -177,6 +177,7 @@ database.py              SQLite persistence (sessions + tutorial resources)
 pdf_report.py            Builds the PDF report and computes pass/fail
 network_lookup.py        Public-IP owner lookup for the network test (cellular/VPN flags)
 chatbot.py               Tutorials assistant (Gemini File Search) + knowledge base sync
+ai/llm.py                LLM client: chat() + embed(), Ollama or Gemini via LLM_PROVIDER
 templates/               Jinja2 HTML pages
 static/css, static/js    Styling and per-test device logic
 reports/                 Generated PDFs, webcam snapshots, voice recordings
@@ -209,6 +210,13 @@ hosting it — see below.
 | `ADMIN_PASSWORD` | Yes | Gates `/admin/*` (History, Manage Tutorials). Without it, the app falls back to an insecure default (`changeme`) and logs a warning — never leave this unset in production. |
 | `GEMINI_API_KEY` | No | Google AI Studio API key (https://aistudio.google.com → Get API key) for the Tutorials assistant. Leave unset to hide the assistant. |
 | `GEMINI_MODEL` | No | Primary Gemini model (default `gemini-3.5-flash`); fallbacks are listed in `chatbot.py`. Change it if Google renames or retires the model. |
+| `LLM_PROVIDER` | No | `gemini` (default) or `ollama`: which chat model `ai/llm.py` uses. Embeddings always come from Ollama. |
+| `LLM_BASE_URL` | No | Ollama's OpenAI-compatible endpoint (default `http://127.0.0.1:11434/v1`). |
+| `LLM_MODEL` | No | Ollama chat model (default `qwen3.5:2b`). |
+| `EMBED_MODEL` | No | Ollama embedding model (default `qwen3-embedding:0.6b`). Changing it requires re-indexing. |
+| `LLM_TIMEOUT` | No | Seconds to wait for the first/next token before giving up (default `90`). |
+| `LLM_REASONING_EFFORT` | No | `none` (default) turns off Qwen "thinking", which is far too slow on CPU; `default` leaves it to the model. |
+| `LLM_MAX_TOKENS`, `LLM_TEMPERATURE`, `EMBED_TIMEOUT` | No | Answer length cap (default `600`), temperature (default `0.2`), embedding timeout in seconds (default `120`). |
 
 ---
 
