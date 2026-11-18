@@ -54,9 +54,9 @@ RATE_LIMIT = 10  # questions...
 RATE_WINDOW = 60  # ...per this many seconds, per IP
 
 # Retrieval
-TOP_K = 4  # candidates fetched
-MAX_CONTEXT_CHUNKS = 4
-CONTEXT_TOKEN_BUDGET = 1500  # ~3 chunks; prompt processing on this CPU is ~60 tok/s
+TOP_K = 12  # candidates fetched (chunks are ~120-200 words)
+MAX_CONTEXT_CHUNKS = 8
+CONTEXT_TOKEN_BUDGET = 1500  # ~5-7 chunks; prompt processing on this CPU is ~60 tok/s
 TOKENS_PER_WORD = 1.35
 # Cosine distance (0 = same meaning). Measured on the real guides: covered
 # questions 0.24-0.46, related-but-not-covered 0.46-0.64, off-topic >= 0.57.
@@ -213,15 +213,25 @@ def retrieve(question, history):
             break
         cost = int(h["words"] * TOKENS_PER_WORD)
         if picked and tokens + cost > CONTEXT_TOKEN_BUDGET:
-            break
+            continue  # a smaller, slightly further chunk may still fit
         picked.append(h)
         tokens += cost
     return picked, hits
 
 
+def reading_order(chunks):
+    """Excerpts grouped by guide (best guide first) and in document order
+    within a guide, so consecutive steps read as one sequence."""
+    rank = {}
+    for c in chunks:
+        rank.setdefault(c["resource_id"], len(rank))
+    return sorted(chunks, key=lambda c: (rank[c["resource_id"]], c.get("ord", 0)))
+
+
 def build_messages(question, history, chunks):
     excerpts = "\n\n".join(
-        f"[{i}] Guide: {c['title']} › {c['section']}\n{c['text']}" for i, c in enumerate(chunks, 1)
+        f"[{i}] Guide: {c['title']} › {c['section']}\n{c['text']}"
+        for i, c in enumerate(reading_order(chunks), 1)
     )
     titles = ", ".join(sorted({c["title"] for c in chunks}))
     user = (

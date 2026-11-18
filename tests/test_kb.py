@@ -114,13 +114,13 @@ def test_scanned_pdf_needs_ocr(tmp_path):
 
 
 def test_chunks_have_heading_paths_and_sizes():
-    body = " ".join(f"word{i}" for i in range(250))
+    body = " ".join(f"word{i}" for i in range(chunk.TARGET_MAX - 50))
     md = "# My Guide\n\nIntro text.\n\n## Part 1\n\n### Step A\n\n" + body + "\n\n### Step B\n\n" + body + "\n\n## Part 2\n\n" + body
     chunks = chunk.chunk_markdown(md, "My Guide")
     assert [c["ord"] for c in chunks] == list(range(len(chunks)))
     assert all(c["words"] <= chunk.HARD_MAX for c in chunks)
     assert chunks[1]["section"] == "Part 1 › Step B"  # the H1 title is not repeated
-    # ~40 words of overlap between consecutive chunks
+    # a few words of overlap between consecutive chunks
     assert chunks[1]["text"].split()[0] in chunks[0]["text"]
 
 

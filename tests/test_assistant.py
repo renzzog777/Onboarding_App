@@ -310,3 +310,12 @@ def test_keepalive_pings_while_the_model_is_silent(client, monkeypatch):
     types = [e["type"] for e in events]
     assert types[0] == "sources" and "ping" in types and types[-2:] == ["delta", "done"]
     assert answer_text(events) == "Done."
+
+
+def test_excerpts_are_grouped_by_guide_in_document_order():
+    chunks = [
+        {"resource_id": 2, "ord": 5, "title": "B", "section": "s", "text": "b5"},
+        {"resource_id": 1, "ord": 3, "title": "A", "section": "s", "text": "a3"},
+        {"resource_id": 2, "ord": 1, "title": "B", "section": "s", "text": "b1"},
+    ]
+    assert [c["text"] for c in chatbot.reading_order(chunks)] == ["b1", "b5", "a3"]

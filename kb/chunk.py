@@ -1,9 +1,11 @@
 """Markdown -> chunks for retrieval.
 
 Split by headings into sections (each knows its heading path), then pack
-consecutive sections into chunks of ~300-400 words (450 max), so the top 3
-chunks fit the ~1,500-token prompt budget. A section longer than the max is
-split into word windows; consecutive chunks share ~40 words of overlap.
+consecutive sections into chunks of ~120-200 words (260 max). Small chunks
+cover one or two steps each, so a question about one detail matches its
+chunk clearly (400-word chunks blurred 5-10 steps into one vector and
+detail questions fell below the distance cut-off). A section longer than
+the max is split into word windows; consecutive chunks share ~25 words.
 
 Each chunk: {"ord", "section", "text", "words"}. "section" is the heading
 path of the chunk's first section, e.g. "Part 02 › Paste the address and
@@ -11,10 +13,10 @@ click Start"; the document's own H1 title is left out of the path.
 """
 import re
 
-TARGET_MIN = 300
-TARGET_MAX = 400
-HARD_MAX = 450
-OVERLAP = 40
+TARGET_MIN = 120
+TARGET_MAX = 200
+HARD_MAX = 260
+OVERLAP = 25
 PATH_SEP = " › "
 
 HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*#*\s*$")
