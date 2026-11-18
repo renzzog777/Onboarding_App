@@ -33,8 +33,15 @@ The original plan assumed Dokploy. apps-01 has no Docker; the app runs as:
 | `OLLAMA_KEEP_ALIVE` | `24h` |
 | `OLLAMA_NUM_PARALLEL` | `1` |
 | `OLLAMA_MAX_LOADED_MODELS` | `2` (chat + embedding) |
+| `LLAMA_ARG_CACHE_RAM` | `512` (MiB) - drop-in `ollama.service.d/cache.conf` |
 | `MemoryMax` / `MemoryHigh` | `7G` / `6500M` |
 | Sandbox | `ProtectSystem=strict`, `ProtectHome=true`, `NoNewPrivileges=true`, writes only `/var/lib/ollama` |
+
+**Why `LLAMA_ARG_CACHE_RAM`:** Ollama's `llama-server` keeps old prompts in RAM
+(default up to 8 GB). After a few hours it held 2.4 GB, pushed Ollama past
+`MemoryHigh` (216,000 throttle events) and spent ~40 s per question updating
+the cache - first words took 60-85 s. Qwen 3.5 is a hybrid model, so the cache
+rarely saves prompt processing anyway. With 512 MiB the update takes ~20 ms.
 
 ## Models
 
@@ -72,7 +79,7 @@ Upload flow (Manage Tutorials):
       labels/page numbers, rejoin URLs split across lines.
    2. < 50 extracted characters per page → `needs_ocr` (OCR not enabled).
    3. Write `data/kb/md/<resource_id>.md`.
-   4. Chunk by headings: 300-400 words (max 450), ~40-word overlap; metadata
+   4. Chunk by headings: 120-200 words (max 260), ~25-word overlap; metadata
       `resource_id`, `title`, `section` (last 2 heading levels), `ord`.
    5. Embed and swap the guide's chunks + vectors in **one transaction**.
    6. Status `indexed` (or `failed` + message).
@@ -105,8 +112,13 @@ venv/bin/python -m kb reindex-all --force         # re-convert everything; rebui
 ## Chatbot retrieval (`chatbot.py`)
 
 - Embed the question (short follow-ups are searched with the previous question).
-- Search top 4; keep chunks with cosine distance ≤ 0.55 and within 0.12 of the
-  best one; at most ~1,500 tokens (1-4 chunks).
+- Search top 12; keep chunks with cosine distance ≤ 0.55 and within 0.12 of the
+  best one; at most ~1,500 tokens (usually 2-6 chunks), given to the model grouped
+  by guide in document order.
+- Chunks were 300-400 words at first: one vector blurred 5-10 steps, so detail
+  questions (Location Services, Bootstrap Token, Recovery Key) fell past 0.55 and
+  were refused. With 120-200-word chunks the answer's excerpt was retrieved for
+  34/34 test questions (was 30/34).
 - Nothing within 0.55 → refusal without calling the model (calibrated on the
   real guides: covered questions 0.24-0.46, related-but-not-covered 0.46-0.64,
   off-topic ≥ 0.57).
@@ -173,6 +185,10 @@ venv/bin/python -m kb reindex-all --force         # re-convert everything; rebui
 - **Whole server:** OCI boot volume backup `apps-01-pre-ollama`.
 
 ## Follow-ups
+
+- **Guide content:** *Quick Wipe (Advisor's Edition)* and *Full Wipe* contain the
+  unfilled placeholders `[SUPPORT EMAIL]` and `[EQUIPMENT EMAIL]`; the assistant
+  repeats them. Fix the PDFs (Replace) or the text (Markdown editor).
 
 - If answer completeness matters more than speed, try `LLM_MODEL=qwen3.5:4b`.
 - OCR for scanned PDFs (tesseract) is not enabled; such guides show *Needs OCR*
