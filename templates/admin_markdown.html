@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Markdown &middot; {{ resource['title'] }}{% endblock %}
+{% block content %}
+<div class="card">
+    <p class="hint"><a href="{{ url_for('admin_resources') }}">&larr; Manage tutorials</a></p>
+    <h1>{{ resource['title'] }}</h1>
+    <p class="muted">This is the text the assistant reads for this guide, converted from
+        <a href="{{ url_for('download_tutorial', resource_id=resource['id']) }}">the PDF</a>.
+        Fix anything the conversion got wrong (a broken URL, a step in the wrong place) and save:
+        the guide is re-indexed with your version. Advisors still download the original PDF.</p>
+
+    <p>
+        Status:
+        {% if not doc %}<span class="status-pill kb-none">Not indexed</span>
+        {% elif doc['status'] == 'indexed' %}<span class="status-pill PASS">Indexed</span> <span class="muted">{{ doc['chunks'] }} chunks</span>
+        {% elif doc['status'] == 'needs_ocr' %}<span class="status-pill PARTIAL">Needs OCR</span>
+        {% elif doc['status'] == 'failed' %}<span class="status-pill FAIL">Failed</span>
+        {% else %}<span class="status-pill in_progress">{{ doc['status']|capitalize }}</span> <span class="muted">refresh in a moment</span>
+        {% endif %}
+        {% if doc and doc['md_edited'] %}<span class="muted">&middot; using your edited Markdown</span>{% endif %}
+    </p>
+    {% if doc and doc['error'] %}<p class="error">{{ doc['error'] }}</p>{% endif %}
+    {% for message in get_flashed_messages() %}<p class="flash-note">{{ message }}</p>{% endfor %}
+
+    <form method="POST">
+        <label for="markdown">Markdown</label>
+        {% if markdown is none %}
+            <p class="muted hint">No Markdown yet{% if doc and doc['status'] in ('pending', 'processing') %} (it is being generated){% endif %}. For a scanned PDF you can type or paste its text here.</p>
+        {% endif %}
+        <textarea id="markdown" name="markdown" class="markdown-editor" rows="28" spellcheck="false">{{ markdown or '' }}</textarea>
+        {% if error %}<p class="error">{{ error }}</p>{% endif %}
+        <button type="submit">Save and re-index</button>
+    </form>
+    <form method="POST" action="{{ url_for('reindex_resource', resource_id=resource['id']) }}" class="inline-form"
+          onsubmit="return confirm('Re-convert this guide from its PDF? Your edits to the Markdown will be discarded.');">
+        <input type="hidden" name="from_pdf" value="1">
+        <input type="hidden" name="next" value="markdown">
+        <button type="submit" class="secondary">Re-convert from PDF</button>
+    </form>
+</div>
+
+{% if chunks %}
+<div class="card">
+    <h2>Indexed chunks ({{ chunks|length }})</h2>
+    <p class="muted hint">How the guide is split for the assistant's search. Each answer cites &ldquo;guide &rarr; section&rdquo;.</p>
+    {% for c in chunks %}
+        <details class="chunk-preview">
+            <summary>#{{ c['ord'] + 1 }} &middot; {{ c['section'] }} <span class="muted">({{ c['words'] }} words)</span></summary>
+            <pre>{{ c['text'] }}</pre>
+        </details>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

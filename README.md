@@ -120,33 +120,57 @@ environment variable:
   (poppler-utils). Generation is best-effort — a failed thumbnail never
   blocks the upload, it just falls back to a text placeholder.
 
+### Knowledge base for the assistant (local)
+Every PDF uploaded in **Manage Tutorials** is also converted to Markdown
+(`pymupdf4llm`, no OCR), split by headings into ~300-400 word chunks,
+embedded with `EMBED_MODEL` on the local Ollama server and stored in
+`data/kb.db` (SQLite + `sqlite-vec`). The PDF itself is stored and
+downloaded exactly as before.
+
+- **Background job:** the upload returns at once; a short-lived
+  `python -m kb worker` process (one at a time, file lock) does the work.
+  The **Assistant** column shows Pending → Processing → Indexed (or
+  Failed / Needs OCR, hover for the reason, with a Retry button).
+- **Duplicates:** a PDF identical to one already uploaded is skipped.
+- **Replace:** uploads a new version of a guide, keeping its download link;
+  its Markdown and chunks are rebuilt.
+- **Delete:** removes the PDF, its Markdown, chunks and vectors together.
+- **Markdown editor:** *Markdown* on each row shows the text the assistant
+  reads and its chunks; edit and save to re-index (kept until the PDF is
+  replaced or re-converted). For a scanned PDF you can paste its text here.
+- **CLI** (from the app folder, with the app's environment loaded):
+  `venv/bin/python -m kb reindex-all` (`--only-missing`, `--force`) and
+  `venv/bin/python -m kb status`. Worker log: `data/kb/worker.log`.
+
 ### Public Tutorials page
 Advisors browse the uploaded PDF guides, each shown with its thumbnail,
 and can download them directly.
 
 ### Tutorials assistant (optional)
 An **Ask the assistant** panel on the Tutorials page answers advisors'
-questions using **only** the uploaded PDF guides, with links to the guide
-each answer came from. It uses Gemini API File Search (Google chunks,
-embeds and searches the PDFs, so there's no vector database to run) and is
-adapted from the
+questions using **only** the uploaded PDF guides, citing the guide and
+section each answer used with a link to download the PDF. Everything runs
+on this server: retrieval uses the local knowledge base (see above) and
+answers come from a local model on Ollama (`LLM_PROVIDER=ollama`, default
+model `qwen3.5:2b`), or from Gemini (`LLM_PROVIDER=gemini`) using the same
+local excerpts. Originally adapted from the
 [Chatbot_onboarding](https://github.com/juandpg1205/Chatbot_onboarding)
 proof of concept.
 
-- **Knowledge base = the Tutorials page.** Uploading a PDF in Manage
-  Tutorials indexes it in the background (a minute or two); deleting it
-  removes it from the index. The Manage Tutorials table shows each guide's
-  *Indexed* / *Indexing* status. Guides uploaded before the key was set are
-  indexed at the next app start.
+- **How it answers:** the question is embedded, the closest 1-4 chunks
+  (~1,500 tokens at most) are given to the model, and the answer is
+  streamed as it is written. The last 2 turns are kept for follow-ups.
+  On this CPU the first words appear in ~15-30 s.
 - **Guardrails** (OWASP Top 10 for LLM Applications): answers only from the
-  documents, refuses other topics and prompt-injection attempts, discards
-  any answer without a citation, renders answers as plain text, English
-  only, and caps usage (500 characters per question, 10 questions per
-  minute per visitor, 800 output tokens, 85 s per question).
-- **Hidden** unless `GEMINI_API_KEY` is set.
-- **Privacy:** on the free tier of the Gemini API, Google may use what you
-  send to improve its products. Only upload guides you're allowed to share
-  outside your organization.
+  excerpts; questions far from every guide are refused without calling the
+  model; refuses other topics and prompt-injection attempts; renders
+  answers as plain text; English only; caps usage (500 characters per
+  question, 10 questions per minute per visitor, 600 output tokens, 2
+  answers at a time - a third visitor is asked to retry).
+- **Shown** when `LLM_PROVIDER=ollama`, or with `LLM_PROVIDER=gemini` and
+  `GEMINI_API_KEY` set.
+- **Privacy:** with Ollama, questions and guides never leave the server.
+  With Gemini, the question and the matching excerpts are sent to Google.
 
 ### Appearance
 A dark, minimalist theme pairing **Fraunces** (serif, for headings) with
@@ -161,7 +185,7 @@ accent color is used throughout rather than a generic bright accent.
 - **Database:** SQLite (no separate database server)
 - **PDF generation:** ReportLab
 - **PDF thumbnails:** `pdftoppm` (poppler-utils)
-- **Tutorials assistant:** Gemini API File Search (`google-genai`)
+- **Tutorials assistant:** local RAG - Ollama (`openai` client) or Gemini (`google-genai`), SQLite + `sqlite-vec`, `pymupdf4llm`
 - **Frontend:** Server-rendered Jinja2 templates, vanilla JavaScript (no
   framework, no build step), native browser APIs (`getUserMedia`,
   `MediaRecorder`, Web Audio API, Canvas)
@@ -176,7 +200,9 @@ app.py                  Flask routes and request handling
 database.py              SQLite persistence (sessions + tutorial resources)
 pdf_report.py            Builds the PDF report and computes pass/fail
 network_lookup.py        Public-IP owner lookup for the network test (cellular/VPN flags)
-chatbot.py               Tutorials assistant (Gemini File Search) + knowledge base sync
+chatbot.py               Tutorials assistant: retrieval, prompt, streamed answers
+ai/llm.py                LLM client: chat() + embed(), Ollama or Gemini via LLM_PROVIDER
+kb/                      Local knowledge base: PDF -> Markdown -> chunks -> vectors (data/kb.db)
 templates/               Jinja2 HTML pages
 static/css, static/js    Styling and per-test device logic
 reports/                 Generated PDFs, webcam snapshots, voice recordings
@@ -209,6 +235,13 @@ hosting it — see below.
 | `ADMIN_PASSWORD` | Yes | Gates `/admin/*` (History, Manage Tutorials). Without it, the app falls back to an insecure default (`changeme`) and logs a warning — never leave this unset in production. |
 | `GEMINI_API_KEY` | No | Google AI Studio API key (https://aistudio.google.com → Get API key) for the Tutorials assistant. Leave unset to hide the assistant. |
 | `GEMINI_MODEL` | No | Primary Gemini model (default `gemini-3.5-flash`); fallbacks are listed in `chatbot.py`. Change it if Google renames or retires the model. |
+| `LLM_PROVIDER` | No | `gemini` (default) or `ollama`: which chat model `ai/llm.py` uses. Embeddings always come from Ollama. |
+| `LLM_BASE_URL` | No | Ollama's OpenAI-compatible endpoint (default `http://127.0.0.1:11434/v1`). |
+| `LLM_MODEL` | No | Ollama chat model (default `qwen3.5:2b`). |
+| `EMBED_MODEL` | No | Ollama embedding model (default `qwen3-embedding:0.6b`). Changing it requires re-indexing. |
+| `LLM_TIMEOUT` | No | Seconds to wait for the first/next token before giving up (default `150`). |
+| `LLM_REASONING_EFFORT` | No | `none` (default) turns off Qwen "thinking", which is far too slow on CPU; `default` leaves it to the model. |
+| `LLM_MAX_TOKENS`, `LLM_TEMPERATURE`, `EMBED_TIMEOUT` | No | Answer length cap (default `600`), temperature (default `0.2`), embedding timeout in seconds (default `120`). |
 
 ---
 

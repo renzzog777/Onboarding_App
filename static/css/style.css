@@ -826,3 +826,57 @@ table.history-table td button { margin-top: 0; min-height: 2rem; }
 @media (prefers-contrast: more) {
     :root { --border: #5a606b; --muted: #c3c7ce; }
 }
+
+/* ---------- Knowledge base (Manage Tutorials + Markdown editor) ---------- */
+
+.status-pill.kb-none { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+.flash-note {
+    color: var(--text);
+    background: var(--card-raised);
+    border-left: 3px solid var(--primary);
+    padding: var(--space-2) var(--space-3);
+    margin: var(--space-3) 0 0;
+    font-size: 0.9375rem;
+}
+.inline-form { display: inline; }
+button.small-btn, table.history-table td button.small-btn {
+    margin: 0;
+    padding: 2px 8px;
+    min-height: 1.75rem;
+    font-size: 0.8rem;
+}
+.row-actions { white-space: nowrap; }
+.replace-menu { display: inline-block; vertical-align: top; }
+.replace-menu > summary { display: inline; cursor: pointer; color: var(--primary); list-style: none; }
+.replace-menu > summary::before { content: "\00b7\00a0"; color: var(--muted); }
+.replace-menu > summary::-webkit-details-marker { display: none; }
+.replace-menu[open] form {
+    display: grid;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+    padding: var(--space-3);
+    background: var(--card-raised);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    white-space: normal;
+    min-width: 16rem;
+}
+textarea.markdown-editor {
+    width: 100%;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    tab-size: 4;
+}
+.chunk-preview { border-top: 1px solid var(--border); padding: var(--space-2) 0; }
+.chunk-preview > summary { cursor: pointer; }
+.chunk-preview pre {
+    white-space: pre-wrap;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    background: var(--card-raised);
+    padding: var(--space-3);
+    border-radius: 8px;
+    overflow-x: auto;
+}
+#assistantClear { margin-top: var(--space-2); }
